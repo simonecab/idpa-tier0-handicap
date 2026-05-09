@@ -267,9 +267,9 @@ table.rtab tbody tr:hover td { background: var(--card); }
     <table class="matrix-table" id="matrixTable"></table>
   </div>
   <div class="legend">
-    <span>Fonte: dati match (SS, MM) + classifier 72-colpi IDPA (MA, EX, NV) · <strong>riferimento unico: SSP/SS = 100</strong></span>
+    <span>Fonte: dati match empirici (mediana 10 match) + classifier 5x5 IDPA · <strong>riferimento unico: SSP/SS = 100</strong></span>
     <span>Valori &gt;100 → combinazione più veloce del riferimento (penalizzata) · &lt;100 → più lenta (bonus)</span>
-    <span>MA CO = 168: un MA in CO è atteso 68% più veloce di un SS in SSP → il suo punteggio adj viene moltiplicato per 1.68</span>
+    <span>MA CO = 139: un MA in CO è atteso 39% più veloce di un SS in SSP → il suo punteggio adj viene moltiplicato per 1.39</span>
   </div>
 </div>
 
@@ -324,16 +324,16 @@ const CLASSES   = ['MA','EX','SS','MM','NV'];
 // > 100 → combinazione più veloce di SSP SS → punteggio inflated (penalizzazione)
 // < 100 → combinazione più lenta di SSP SS  → punteggio deflated (bonus)
 //
-// Fonte: handicap_DxC.csv calcolato nella sessione "Create comparison table for races"
-// basato su dati match empirici (SS, MM) e classifier 72-colpi IDPA (MA, EX, NV).
-// Nota: PCC per tutte le classi usa valori del classifier (i dati match danno ~130-140
-// per SS/MM ma la matrice consolidata usa i valori completi per coerenza interna).
+// Fonte: coefficiente inter-divisione (5x5 classifier, validato su mediana match reali)
+//        × coefficiente di classe (mediana empirica ≥5 match, altrimenti 5x5).
+// Formula: coeff_finale = inter_div × coeff_classe / 100, arrotondato all'intero.
+// Aggiornato maggio 2026.
 const DEFAULT_MATRIX = {
-  MA: { SSP:155, ESP:156, CDP:153, CCP:154, CO:168, REV:161, BUG:145, PCC:232 },
-  EX: { SSP:126, ESP:126, CDP:122, CCP:119, CO:139, REV:125, BUG:109, PCC:182 },
-  SS: { SSP:100, ESP:100, CDP: 91, CCP: 93, CO:110, REV: 88, BUG: 82, PCC:161 },
-  MM: { SSP: 78, ESP: 79, CDP: 75, CCP: 73, CO: 83, REV: 62, BUG: 64, PCC:140 },
-  NV: { SSP: 61, ESP: 61, CDP: 51, CCP: 56, CO: 62, REV: 46, BUG: 43, PCC:116 },
+  MA: { SSP:132, ESP:139, CDP:138, CCP:127, CO:139, REV:131, BUG:115, PCC:170 },
+  EX: { SSP:118, ESP:120, CDP:114, CCP:108, CO:118, REV:113, BUG:104, PCC:150 },
+  SS: { SSP:100, ESP:102, CDP: 98, CCP: 94, CO:102, REV: 88, BUG: 84, PCC:134 },
+  MM: { SSP: 87, ESP: 91, CDP: 88, CCP: 73, CO: 89, REV: 70, BUG: 66, PCC:118 },
+  NV: { SSP: 71, ESP: 79, CDP: 71, CCP: 66, CO: 74, REV: 63, BUG: 60, PCC:110 },
 };
 
 // Tutte le righe hanno una base empirica (anche se MA/EX/NV usano il classifier come proxy inter-classe)
