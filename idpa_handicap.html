@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDPA · Handicap Score</title>
+<style>
+:root {
+  --bg:      #12131a;
+  --surface: #1c1e2a;
+  --card:    #252840;
+  --border:  #2a2d42;
+  --accent:  #e94560;
+  --blue:    #4c9fff;
+  --text:    #eaeaea;
+  --muted:   #7a7a9a;
+  --green:   #4caf50;
+  --yellow:  #ffa726;
+  --red:     #ef5350;
+  --gold:    #ffd700;
+  --silver:  #c0c0c0;
+  --bronze:  #cd7f32;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+}
+.container { max-width: 960px; margin: 0 auto; }
+
+h1 { font-size: 1.6rem; color: var(--accent); margin-bottom: .2rem; }
+.sub { color: var(--muted); font-size: .82rem; margin-bottom: 1.5rem; }
+
+/* ── MODE TOGGLE ── */
+.mode-toggle {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .25rem;
+  width: fit-content;
+  margin-bottom: 1.75rem;
+  gap: .25rem;
+}
+.mode-btn {
+  padding: .45rem 1.3rem;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: .9rem;
+  cursor: pointer;
+  transition: all .18s;
+  letter-spacing: .01em;
+}
+.mode-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
+
+/* ── SECTION LABELS ── */
+.section { margin-bottom: 1.5rem; }
+.section-label {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  margin-bottom: .6rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+.btn-link {
+  background: none; border: none;
+  color: var(--blue); font-size: .72rem;
+  cursor: pointer; text-decoration: underline; padding: 0;
+}
+
+/* ── MATRIX ── */
+.matrix-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .75rem .75rem .5rem;
+}
+.matrix-table { border-collapse: collapse; font-size: .82rem; }
+.matrix-table th {
+  background: var(--card);
+  color: var(--muted);
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: .38rem .55rem;
+  text-align: center;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+}
+.matrix-table th:first-child { text-align: left; min-width: 90px; }
+.matrix-table td {
+  padding: .28rem .35rem;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.cls-label {
+  font-weight: 700;
+  font-size: .76rem;
+  color: var(--text);
+  background: var(--card);
+  text-align: left;
+  padding: .28rem .55rem;
+  white-space: nowrap;
+  user-select: none;
+}
+.matrix-table input[type="number"] {
+  width: 60px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: .84rem;
+  font-weight: 600;
+  text-align: center;
+  padding: .18rem 0;
+  transition: border-color .15s;
+}
+.matrix-table input[type="number"]:focus { outline: none; border-color: var(--blue); }
+.ref-cell { background: rgba(233,69,96,.07); }
+.ref-cell input { border-color: var(--accent) !important; color: var(--accent); font-weight: 700; }
+.legend {
+  font-size: .64rem;
+  color: var(--muted);
+  margin-top: .45rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 3px; vertical-align: middle; }
+
+/* ── FILE CARDS ── */
+.file-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.file-card {
+  flex: 1 1 240px;
+  background: var(--surface);
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1rem;
+  cursor: pointer;
+  transition: border-color .18s;
+}
+.file-card:hover { border-color: var(--blue); }
+.file-card.loaded  { border-style: solid; border-color: var(--green); }
+.file-card.has-err { border-style: solid; border-color: var(--red); }
+.file-card input[type="file"] { display: none; }
+.fc-label { font-size: .69rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: .4rem; }
+.fc-name  { font-size: .85rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-hint  { font-size: .68rem; color: var(--muted); margin-top: .3rem; font-style: italic; }
+
+/* ── VALIDATION ── */
+.valid-panel {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: .85rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: .82rem;
+}
+.valid-ok  { color: var(--green); }
+.valid-warn { display: flex; gap: .5rem; align-items: flex-start; color: var(--yellow); margin-bottom: .3rem; }
+.valid-err  { display: flex; gap: .5rem; align-items: flex-start; color: var(--red);    margin-bottom: .3rem; }
+
+/* ── OPTIONS ── */
+.options-panel {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: .85rem 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+.cb-label { display: flex; align-items: center; gap: .5rem; font-size: .88rem; cursor: pointer; }
+.cb-label input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--blue); cursor: pointer; }
+.btn-calc {
+  padding: .55rem 1.4rem;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: 8px;
+  font-size: .95rem; font-weight: 600;
+  cursor: pointer; transition: opacity .18s;
+}
+.btn-calc:hover { opacity: .85; }
+
+/* ── RESULTS ── */
+.results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.results-header h2 { font-size: 1.1rem; }
+.btn-export {
+  padding: .35rem .85rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text); font-size: .82rem; cursor: pointer;
+}
+.btn-export:hover { border-color: var(--text); }
+
+table.rtab { width: 100%; border-collapse: collapse; font-size: .85rem; }
+table.rtab thead th {
+  background: var(--card);
+  padding: .5rem .8rem;
+  text-align: left;
+  font-size: .71rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+table.rtab tbody td { padding: .5rem .8rem; border-bottom: 1px solid var(--border); background: var(--surface); }
+table.rtab tbody tr:hover td { background: var(--card); }
+
+.rk { font-weight: 700; font-size: 1rem; }
+.r1 { color: var(--gold); }
+.r2 { color: var(--silver); }
+.r3 { color: var(--bronze); }
+
+.expand-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: .75rem; padding: 0; }
+.expand-btn:hover { color: var(--text); }
+.detail-row td { background: var(--bg) !important; padding: 0 !important; }
+.detail-inner { padding: .5rem .8rem .75rem 2rem; }
+.detail-inner table { font-size: .78rem; }
+.detail-inner thead th { background: transparent; font-size: .68rem; }
+.detail-inner tbody td { background: transparent; border-color: #1a1c28; }
+.counted-row td { background: rgba(76,159,255,.08) !important; }
+.tag { display: inline-block; font-size: .62rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
+.tag-in { background: var(--blue); color: #000; }
+
+.cls-group-header td {
+  background: var(--card) !important;
+  color: var(--muted);
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: .3rem .8rem !important;
+  border-bottom: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>🎯 IDPA · Handicap Score</h1>
+  <p class="sub">Normalizzazione per divisione × classe &nbsp;·&nbsp; riferimento unico: SSP / SS = 100</p>
+</header>
+
+<!-- MODE TOGGLE -->
+<div class="mode-toggle">
+  <button class="mode-btn active" id="btn-squadra"     onclick="setMode('squadra')">🏆 Squadra</button>
+  <button class="mode-btn"        id="btn-individuale" onclick="setMode('individuale')">👤 Individuale</button>
+</div>
+
+<!-- MATRIX -->
+<div class="section">
+  <div class="section-label">
+    Matrice handicap — divisione × classe
+    <button class="btn-link" onclick="resetMatrix()">Ripristina default</button>
+  </div>
+  <div class="matrix-wrap">
+    <table class="matrix-table" id="matrixTable"></table>
+  </div>
+  <div class="legend">
+    <span>Fonte: dati match empirici (mediana 10 match) + classifier 5x5 IDPA · <strong>riferimento unico: SSP/SS = 100</strong></span>
+    <span>Valori &gt;100 → combinazione più veloce del riferimento (penalizzata) · &lt;100 → più lenta (bonus)</span>
+    <span>MA CO = 139: un MA in CO è atteso 39% più veloce di un SS in SSP → il suo punteggio adj viene moltiplicato per 1.39</span>
+  </div>
+</div>
+
+<!-- FILES -->
+<div class="file-row" id="fileRow">
+  <div class="file-card" id="card-results" onclick="document.getElementById('inp-results').click()">
+    <div class="fc-label">Risultati PractiScore</div>
+    <div class="fc-name" id="name-results">Seleziona il CSV…</div>
+    <div class="fc-hint">export standard IDPA Match Director</div>
+    <input type="file" id="inp-results" accept=".csv">
+  </div>
+  <div class="file-card" id="card-teams" onclick="document.getElementById('inp-teams').click()">
+    <div class="fc-label">Squadre</div>
+    <div class="fc-name" id="name-teams">Seleziona il CSV…</div>
+    <div class="fc-hint">colonne: nome cognome · tessera idpa · squadra</div>
+    <input type="file" id="inp-teams" accept=".csv">
+  </div>
+</div>
+
+<!-- VALIDATION -->
+<div class="valid-panel" id="validPanel" style="display:none"></div>
+
+<!-- OPTIONS -->
+<div class="options-panel" id="optPanel" style="display:none">
+  <div id="optLeft" style="display:flex;flex-direction:column;gap:.5rem">
+    <label class="cb-label" id="topNWrap">
+      <input type="checkbox" id="cbTopN" checked>
+      <span id="topNLabel">Considera solo i migliori N per squadra</span>
+    </label>
+  </div>
+  <button class="btn-calc" onclick="calculate()">Calcola classifica</button>
+</div>
+
+<!-- RESULTS -->
+<div id="resultsSection" style="display:none">
+  <div class="results-header">
+    <h2 id="resultsTitle">Classifica</h2>
+    <button class="btn-export" onclick="exportCSV()">⬇ Esporta CSV</button>
+  </div>
+  <div id="rankTable"></div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ─── COSTANTI ───────────────────────────────────────────────────────────────
+const DIVISIONS = ['SSP','ESP','CDP','CCP','CO','REV','BUG','PCC'];
+const CLASSES   = ['MA','EX','SS','MM','NV'];
+
+// Matrice handicap — riferimento unico: SSP / SS = 100
+// Tutti i valori sono relativi a quella singola cella.
+// > 100 → combinazione più veloce di SSP SS → punteggio inflated (penalizzazione)
+// < 100 → combinazione più lenta di SSP SS  → punteggio deflated (bonus)
+//
+// Fonte: coefficiente inter-divisione (5x5 classifier, validato su mediana match reali)
+//        × coefficiente di classe (mediana empirica ≥5 match, altrimenti 5x5).
+// Formula: coeff_finale = inter_div × coeff_classe / 100, arrotondato all'intero.
+// Aggiornato maggio 2026.
+const DEFAULT_MATRIX = {
+  MA: { SSP:132, ESP:139, CDP:138, CCP:127, CO:139, REV:131, BUG:115, PCC:170 },
+  EX: { SSP:118, ESP:120, CDP:114, CCP:108, CO:118, REV:113, BUG:104, PCC:150 },
+  SS: { SSP:100, ESP:102, CDP: 98, CCP: 94, CO:102, REV: 88, BUG: 84, PCC:134 },
+  MM: { SSP: 87, ESP: 91, CDP: 88, CCP: 73, CO: 89, REV: 70, BUG: 66, PCC:118 },
+  NV: { SSP: 71, ESP: 79, CDP: 71, CCP: 66, CO: 74, REV: 63, BUG: 60, PCC:110 },
+};
+
+// Tutte le righe hanno una base empirica (anche se MA/EX/NV usano il classifier come proxy inter-classe)
+const EMPIRICAL = { MA:true, EX:true, SS:true, MM:true, NV:true };
+
+// ─── STATO ──────────────────────────────────────────────────────────────────
+let appMode = 'squadra';
+let state = {
+  results      : null,   // array shooter da PractiScore
+  teamsRaw2    : null,   // array { nome, tessera, squadra }
+  errors       : [],
+  warnings     : [],
+  minN         : null,
+  resolvedTeams: null,
+  calcData     : null,
+};
+
+// ─── MODE ───────────────────────────────────────────────────────────────────
+function setMode(mode) {
+  appMode = mode;
+  document.getElementById('btn-squadra').className     = 'mode-btn' + (mode === 'squadra'     ? ' active' : '');
+  document.getElementById('btn-individuale').className = 'mode-btn' + (mode === 'individuale' ? ' active' : '');
+  document.getElementById('card-teams').style.display  = mode === 'squadra' ? '' : 'none';
+  document.getElementById('resultsSection').style.display = 'none';
+  state.calcData = null;
+  validate();
+}
+
+// ─── MATRIX UI ──────────────────────────────────────────────────────────────
+function buildMatrixUI() {
+  const tbl = document.getElementById('matrixTable');
+  let html = '<thead><tr><th>Classe</th>';
+  DIVISIONS.forEach(d => html += `<th>${d}</th>`);
+  html += '</tr></thead><tbody>';
+
+  CLASSES.forEach(cls => {
+    html += `<tr><td class="cls-label">${cls}</td>`;
+    DIVISIONS.forEach(div => {
+      const val = DEFAULT_MATRIX[cls][div];
+      // Cella di riferimento: SSP/SS = 100
+      const isRef = (cls === 'SS' && div === 'SSP');
+      html += `<td class="${isRef ? 'ref-cell' : ''}"><input type="number" id="mx-${cls}-${div}" value="${val}" min="1" max="999" step="1"${isRef ? ' readonly title="Riferimento fisso: SSP/SS = 100"' : ''}></td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody>';
+  tbl.innerHTML = html;
+}
+
+function resetMatrix() {
+  CLASSES.forEach(cls => DIVISIONS.forEach(div => {
+    const el = document.getElementById(`mx-${cls}-${div}`);
+    if (el && !el.readOnly) el.value = DEFAULT_MATRIX[cls][div];
+  }));
+}
+
+function readMatrix() {
+  const m = {};
+  CLASSES.forEach(cls => {
+    m[cls] = {};
+    DIVISIONS.forEach(div => {
+      const el = document.getElementById(`mx-${cls}-${div}`);
+      m[cls][div] = parseFloat(el?.value) || DEFAULT_MATRIX[cls][div];
+    });
+  });
+  // Il riferimento SSP/SS è sempre 100 (readonly)
+  m['SS']['SSP'] = 100;
+  return m;
+}
+
+// ─── CSV PARSER ─────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const first = text.split('\n')[0];
+  const sep = (first.match(/;/g)||[]).length > (first.match(/,/g)||[]).length ? ';' : ',';
+  const rows = [];
+  let row = [], field = '', inQ = false;
+  const push = () => { row.push(field.trim()); field = ''; };
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      if (inQ && text[i+1] === '"') { field += '"'; i++; }
+      else inQ = !inQ;
+    } else if (c === sep && !inQ) { push(); }
+    else if ((c === '\n' || (c === '\r' && text[i+1] === '\n')) && !inQ) {
+      if (c === '\r') i++;
+      push();
+      if (row.some(f => f !== '')) rows.push(row);
+      row = [];
+    } else { field += c; }
+  }
+  push();
+  if (row.some(f => f !== '')) rows.push(row);
+  const headers = rows[0] || [];
+  return rows.slice(1).map(r => {
+    const obj = {};
+    headers.forEach((h, i) => obj[h.trim()] = (r[i] || '').trim());
+    return obj;
+  });
+}
+
+// ─── PARSE RISULTATI ────────────────────────────────────────────────────────
+function normalizeClass(cls) {
+  const c = (cls || '').toUpperCase().trim();
+  if (c === 'UN' || c === 'U' || c === 'UNCLASSIFIED') return 'NV';
+  return c;
+}
+
+function parseResults(text) {
+  const rows = parseCSV(text);
+  return rows
+    .filter(r => r['Completed'] === '1' && r['DNF'] !== '1')
+    .map(r => ({
+      lastName  : (r['Last Name']  || '').trim(),
+      firstName : (r['First Name'] || '').trim(),
+      idpaId    : (r['IDPA ID']    || '').trim(),
+      division  : (r['Division']   || '').toUpperCase().trim(),
+      cls       : normalizeClass(r['Class'] || ''),
+      totalScore: parseFloat(r['Total Score']) || 0,
+    }));
+}
+
+// ─── PARSE SQUADRE ──────────────────────────────────────────────────────────
+function parseTeamsCSV(text) {
+  const rows = parseCSV(text);
+  return rows.map(r => {
+    const nome    = (r['nome cognome'] || r['nome'] || r['Nome'] || r['Nome Cognome'] || '').trim();
+    const tessera = (r['tessera idpa'] || r['tessera_idpa'] || r['tessera'] || r['IDPA ID'] || r['IDPA_ID'] || '').trim();
+    const squadra = (r['squadra'] || r['nome_squadra'] || r['Squadra'] || r['Team'] || '').trim();
+    return { nome, tessera, squadra };
+  }).filter(r => r.squadra);
+}
+
+// ─── LOOKUP ─────────────────────────────────────────────────────────────────
+function buildLookup(results) {
+  const byId = {}, byFull1 = {}, byFull2 = {};
+  results.forEach(r => {
+    if (r.idpaId) byId[r.idpaId.toLowerCase()] = r;
+    byFull1[`${r.lastName} ${r.firstName}`.toLowerCase().trim()] = r;
+    byFull2[`${r.firstName} ${r.lastName}`.toLowerCase().trim()] = r;
+  });
+  return { byId, byFull1, byFull2 };
+}
+function lookupByName(nome, lk) {
+  const n = nome.toLowerCase().trim();
+  return lk.byFull1[n] || lk.byFull2[n] || null;
+}
+function nameof(r) { return `${r.lastName} ${r.firstName}`.trim(); }
+
+// ─── COEFFICIENTE ────────────────────────────────────────────────────────────
+// adj = raw * coeff / 100
+// Se coeff > 100: divisione più veloce di SSP → adj > raw (penalizzazione)
+// Se coeff < 100: divisione più lenta di SSP  → adj < raw (bonus)
+function getCoeff(matrix, cls, division) {
+  if (matrix[cls] && matrix[cls][division] != null) return matrix[cls][division];
+  return 100;
+}
+
+// ─── VALIDATE ───────────────────────────────────────────────────────────────
+function validate() {
+  const errors   = [];
+  const warnings = [];
+  state.minN = null;
+  state.resolvedTeams = null;
+
+  if (!state.results) { renderValid(null); return; }
+
+  const matrix = readMatrix();
+
+  // --- Individuale ---
+  if (appMode === 'individuale') {
+    const unknownSet = new Set();
+    state.results.forEach(r => {
+      if (!matrix[r.cls] || matrix[r.cls][r.division] == null)
+        unknownSet.add(`${r.division}/${r.cls}`);
+    });
+    unknownSet.forEach(combo =>
+      warnings.push(`Combinazione <b>${combo}</b> non in matrice — i tiratori con questa combinazione vengono esclusi.`)
+    );
+    state.errors   = errors;
+    state.warnings = warnings;
+    renderValid('ok-ind', state.results.length, null, warnings);
+    renderOptions();
+    return;
+  }
+
+  // --- Squadra ---
+  if (!state.teamsRaw2) { renderValid(null); return; }
+
+  const lk = buildLookup(state.results);
+  const teamsMap = {};
+  state.teamsRaw2.forEach(m => {
+    if (!teamsMap[m.squadra]) teamsMap[m.squadra] = [];
+    teamsMap[m.squadra].push(m);
+  });
+
+  const resolvedTeams = {};
+  for (const [sq, members] of Object.entries(teamsMap)) {
+    if (members.length < 3) {
+      errors.push(`Squadra <b>${sq}</b>: solo ${members.length} tiratore/i (minimo 3).`);
+      continue;
+    }
+    resolvedTeams[sq] = [];
+    for (const m of members) {
+      let shooter = null;
+      if (m.tessera) shooter = lk.byId[m.tessera.toLowerCase()] || null;
+      if (!shooter && m.nome) shooter = lookupByName(m.nome, lk);
+      if (!shooter) {
+        errors.push(`Squadra <b>${sq}</b> · <b>"${m.nome || m.tessera || '?'}"</b>: non trovato nei risultati.`);
+        continue;
+      }
+      if (m.tessera && m.nome) {
+        const byT = lk.byId[m.tessera.toLowerCase()];
+        const byN = lookupByName(m.nome, lk);
+        if (byT && byN && byT !== byN) {
+          errors.push(`Squadra <b>${sq}</b> · incongruenza: nome "<b>${m.nome}</b>" → <b>${nameof(byN)}</b>, tessera <b>${m.tessera}</b> → <b>${nameof(byT)}</b>.`);
+          continue;
+        }
+      }
+      if (!matrix[shooter.cls] || matrix[shooter.cls][shooter.division] == null) {
+        warnings.push(`Squadra <b>${sq}</b> · <b>${nameof(shooter)}</b>: combinazione ${shooter.division}/${shooter.cls} non in matrice — usato 100.`);
+      }
+      resolvedTeams[sq].push({
+        nome    : m.nome || nameof(shooter),
+        tessera : m.tessera || shooter.idpaId,
+        squadra : sq,
+        shooter,
+      });
+    }
+  }
+
+  state.errors        = errors;
+  state.warnings      = warnings;
+  state.resolvedTeams = resolvedTeams;
+
+  if (!errors.length) {
+    const sizes = Object.values(resolvedTeams).map(a => a.length).filter(n => n > 0);
+    state.minN = sizes.length ? Math.min(...sizes) : null;
+  }
+
+  const nTeams = Object.keys(resolvedTeams).length;
+  renderValid(errors.length ? 'err' : 'ok-sq', null, nTeams, warnings);
+  renderOptions();
+}
+
+// ─── RENDER VALIDAZIONE ─────────────────────────────────────────────────────
+function renderValid(status, nShooters, nTeams, warnings) {
+  const panel = document.getElementById('validPanel');
+
+  // condizioni per mostrare il pannello
+  const shouldShow =
+    status !== null &&
+    ((appMode === 'individuale' && state.results) ||
+     (appMode === 'squadra'     && state.results && state.teamsRaw2));
+
+  if (!shouldShow) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+
+  let html = '';
+
+  if (status === 'ok-ind') {
+    const n = state.results.filter(r => {
+      const m = readMatrix();
+      return m[r.cls] && m[r.cls][r.division] != null;
+    }).length;
+    html += `<div class="valid-ok" style="margin-bottom:${(warnings||[]).length?'.4rem':0}">✓ ${nShooters} tiratori caricati (${n} con coefficiente disponibile)</div>`;
+    document.getElementById('card-results').className = 'file-card loaded';
+  } else if (status === 'ok-sq') {
+    const tot = Object.values(state.resolvedTeams || {}).reduce((s, a) => s + a.length, 0);
+    html += `<div class="valid-ok" style="margin-bottom:${(warnings||[]).length?'.4rem':0}">✓ ${nTeams} squadre · ${tot} tiratori trovati</div>`;
+    document.getElementById('card-results').className = 'file-card loaded';
+    document.getElementById('card-teams').className   = 'file-card loaded';
+  } else if (status === 'err') {
+    (state.errors || []).forEach(e => html += `<div class="valid-err">🔴 <span>${e}</span></div>`);
+    document.getElementById('card-teams').className = 'file-card has-err';
+  }
+
+  (warnings || []).forEach(w => html += `<div class="valid-warn">⚠️ <span>${w}</span></div>`);
+  panel.innerHTML = html;
+}
+
+// ─── RENDER OPZIONI ─────────────────────────────────────────────────────────
+function renderOptions() {
+  const panel   = document.getElementById('optPanel');
+  const topNWrap = document.getElementById('topNWrap');
+
+  const ready =
+    (appMode === 'individuale' && state.results && !state.errors.length) ||
+    (appMode === 'squadra'     && state.results && state.teamsRaw2 && !state.errors.length && state.resolvedTeams);
+
+  if (!ready) { panel.style.display = 'none'; return; }
+  panel.style.display = 'flex';
+
+  if (appMode === 'squadra') {
+    topNWrap.style.display = '';
+    const N = state.minN;
+    document.getElementById('topNLabel').textContent = N
+      ? `Considera solo i migliori ${N} per squadra (squadra più piccola = ${N})`
+      : 'Considera solo i migliori N per squadra';
+  } else {
+    topNWrap.style.display = 'none';
+  }
+}
+
+// ─── FILE LOADING ───────────────────────────────────────────────────────────
+function wireFiles() {
+  document.getElementById('inp-results').addEventListener('change', function () {
+    const f = this.files[0]; if (!f) return;
+    document.getElementById('name-results').textContent = f.name;
+    const rd = new FileReader();
+    rd.onload = e => {
+      state.results = parseResults(e.target.result);
+      document.getElementById('resultsSection').style.display = 'none';
+      state.calcData = null;
+      validate();
+    };
+    rd.readAsText(f, 'UTF-8');
+  });
+
+  document.getElementById('inp-teams').addEventListener('change', function () {
+    const f = this.files[0]; if (!f) return;
+    document.getElementById('name-teams').textContent = f.name;
+    const rd = new FileReader();
+    rd.onload = e => {
+      state.teamsRaw2 = parseTeamsCSV(e.target.result);
+      document.getElementById('resultsSection').style.display = 'none';
+      state.calcData = null;
+      validate();
+    };
+    rd.readAsText(f, 'UTF-8');
+  });
+}
+
+// ─── CALCOLA ────────────────────────────────────────────────────────────────
+function calculate() {
+  document.getElementById('resultsSection').style.display = 'none';
+  if (appMode === 'squadra')     calcSquadra();
+  else                           calcIndividuale();
+}
+
+// ─── CALCOLO SQUADRA ────────────────────────────────────────────────────────
+function calcSquadra() {
+  if (state.errors.length || !state.resolvedTeams) return;
+  const matrix = readMatrix();
+  const topN   = document.getElementById('cbTopN').checked ? state.minN : 0;
+  const rankedTeams = [];
+
+  for (const [sq, members] of Object.entries(state.resolvedTeams)) {
+    const withScores = members.map(m => {
+      const coeff = getCoeff(matrix, m.shooter.cls, m.shooter.division);
+      const adj   = m.shooter.totalScore * coeff / 100;
+      return { ...m, coeff, adjScore: adj };
+    });
+    const sorted  = [...withScores].sort((a, b) => a.adjScore - b.adjScore);
+    const counted = topN > 0 ? sorted.slice(0, topN) : sorted;
+    const teamScore = counted.reduce((s, m) => s + m.adjScore, 0) / counted.length;
+    rankedTeams.push({ name: sq, members: withScores, counted: new Set(counted), teamScore, topN });
+  }
+
+  rankedTeams.sort((a, b) => a.teamScore - b.teamScore);
+  state.calcData = { mode: 'squadra', rankedTeams, topN };
+  renderResultsSquadra(rankedTeams, topN);
+}
+
+// ─── CALCOLO INDIVIDUALE ────────────────────────────────────────────────────
+function calcIndividuale() {
+  if (!state.results) return;
+  const matrix = readMatrix();
+
+  const ranked = state.results
+    .filter(r => matrix[r.cls] != null && matrix[r.cls][r.division] != null)
+    .map(r => {
+      const coeff = getCoeff(matrix, r.cls, r.division);
+      const adj   = r.totalScore * coeff / 100;
+      return { ...r, coeff, adjScore: adj };
+    })
+    .sort((a, b) => a.adjScore - b.adjScore);
+
+  state.calcData = { mode: 'individuale', ranked };
+  renderResultsIndividuale(ranked);
+}
+
+// ─── RENDER SQUADRA ─────────────────────────────────────────────────────────
+function fmt(v) { return (v != null && !isNaN(v)) ? v.toFixed(2) + 's' : '—'; }
+
+function renderResultsSquadra(rankedTeams, topN) {
+  document.getElementById('resultsTitle').textContent = 'Classifica Squadre';
+  const section = document.getElementById('resultsSection');
+  const tbl     = document.getElementById('rankTable');
+  section.style.display = '';
+
+  let html = `<table class="rtab"><thead><tr>
+    <th>Pos</th><th>Squadra</th>
+    <th>${topN ? `Migliori ${topN}` : 'Tutti'}</th>
+    <th>Punteggio</th><th></th>
+  </tr></thead><tbody>`;
+
+  rankedTeams.forEach((team, idx) => {
+    const pos = idx + 1;
+    const rc  = pos===1?'r1':pos===2?'r2':pos===3?'r3':'';
+    const did = `det-${idx}`;
+    html += `<tr>
+      <td class="rk ${rc}">${pos}</td>
+      <td><strong>${team.name}</strong></td>
+      <td>${[...team.counted].length} / ${team.members.length}</td>
+      <td><strong>${fmt(team.teamScore)}</strong></td>
+      <td><button class="expand-btn" onclick="toggleDet('${did}')">▼ dettaglio</button></td>
+    </tr>
+    <tr id="${did}" style="display:none" class="detail-row">
+      <td colspan="5"><div class="detail-inner">${buildSquadraDetail(team)}</div></td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  tbl.innerHTML = html;
+}
+
+function buildSquadraDetail(team) {
+  const sorted = [...team.members].sort((a, b) => a.adjScore - b.adjScore);
+  let html = `<table><thead><tr>
+    <th>Div/Cls</th><th>Tiratore</th><th>Raw</th><th>Coeff</th><th>Normalizzato</th>
+  </tr></thead><tbody>`;
+  sorted.forEach(m => {
+    const isCounted = team.counted.has(m);
+    const tag  = isCounted ? '<span class="tag tag-in">✓</span>' : '';
+    const rowC = isCounted ? 'counted-row' : '';
+    html += `<tr class="${rowC}">
+      <td>${m.shooter.division}/${m.shooter.cls}</td>
+      <td>${m.nome}${tag}</td>
+      <td>${fmt(m.shooter.totalScore)}</td>
+      <td>${m.coeff}%</td>
+      <td>${fmt(m.adjScore)}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  if (team.topN) html += `<p style="font-size:.71rem;color:var(--muted);margin-top:.4rem">✓ = conteggiati nel punteggio squadra</p>`;
+  return html;
+}
+
+// ─── RENDER INDIVIDUALE ──────────────────────────────────────────────────────
+function renderResultsIndividuale(ranked) {
+  document.getElementById('resultsTitle').textContent = 'Classifica Individuale (normalizzata per div×classe)';
+  const section = document.getElementById('resultsSection');
+  const tbl     = document.getElementById('rankTable');
+  section.style.display = '';
+
+  // Raggruppa per classe per mostrare header di sezione (opzionale)
+  let html = `<table class="rtab"><thead><tr>
+    <th>Pos</th><th>Tiratore</th>
+    <th>Div/Cls</th><th>Raw</th><th>Coeff</th><th>Normalizzato</th>
+  </tr></thead><tbody>`;
+
+  let lastCls = null;
+  ranked.forEach((r, idx) => {
+    // Nessun subheader di classe: ranking è unico, la classe è già visibile nella colonna
+    const pos = idx + 1;
+    const rc  = pos===1?'r1':pos===2?'r2':pos===3?'r3':'';
+    html += `<tr>
+      <td class="rk ${rc}">${pos}</td>
+      <td>${r.lastName} ${r.firstName}</td>
+      <td><span style="font-size:.8rem;color:var(--muted)">${r.division}/${r.cls}</span></td>
+      <td>${fmt(r.totalScore)}</td>
+      <td style="font-size:.8rem;color:var(--muted)">${r.coeff}%</td>
+      <td><strong>${fmt(r.adjScore)}</strong></td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  tbl.innerHTML = html;
+}
+
+function toggleDet(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+// ─── EXPORT CSV ─────────────────────────────────────────────────────────────
+function exportCSV() {
+  const data = state.calcData; if (!data) return;
+  const BOM = '﻿';
+  let csv, filename;
+
+  if (data.mode === 'squadra') {
+    csv = BOM + 'pos_squadra;squadra;punteggio_squadra;nome;tessera;divisione;classe;raw;coeff_pct;normalizzato;conteggiato\n';
+    data.rankedTeams.forEach((team, idx) => {
+      const sorted = [...team.members].sort((a, b) => a.adjScore - b.adjScore);
+      sorted.forEach(m => {
+        csv += [
+          idx + 1,
+          `"${team.name}"`,
+          team.teamScore.toFixed(2),
+          `"${m.nome}"`,
+          m.tessera || m.shooter.idpaId || '',
+          m.shooter.division,
+          m.shooter.cls,
+          m.shooter.totalScore.toFixed(2),
+          m.coeff,
+          m.adjScore.toFixed(2),
+          team.counted.has(m) ? 1 : 0,
+        ].join(';') + '\n';
+      });
+    });
+    filename = 'classifica_squadre.csv';
+  } else {
+    csv = BOM + 'pos;cognome;nome;divisione;classe;raw;coeff_pct;normalizzato\n';
+    data.ranked.forEach((r, idx) => {
+      csv += [
+        idx + 1,
+        `"${r.lastName}"`,
+        `"${r.firstName}"`,
+        r.division, r.cls,
+        r.totalScore.toFixed(2),
+        r.coeff,
+        r.adjScore.toFixed(2),
+      ].join(';') + '\n';
+    });
+    filename = 'classifica_individuale.csv';
+  }
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+buildMatrixUI();
+wireFiles();
+setMode('squadra');
+</script>
+</body>
+</html>
