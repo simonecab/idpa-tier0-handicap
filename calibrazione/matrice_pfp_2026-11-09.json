@@ -1,0 +1,128 @@
+{
+  "tipo": "idpa-tier0-pfp-matrice",
+  "versione": 1,
+  "riferimento": "SSP/SS = 100",
+  "fonte": "Calibrazione pxp su 30 gare 2025-01..2026-11",
+  "data": "2026-11-09",
+  "divisioni": [
+    "SSP",
+    "ESP",
+    "CDP",
+    "CCP",
+    "CO",
+    "REV",
+    "BUG",
+    "PCC"
+  ],
+  "classi": [
+    "MA",
+    "EX",
+    "SS",
+    "MM",
+    "NV"
+  ],
+  "matrice": {
+    "MA": {
+      "SSP": 129,
+      "ESP": 127,
+      "CDP": 113,
+      "CCP": 128,
+      "CO": 140,
+      "REV": 97,
+      "BUG": 108,
+      "PCC": 182
+    },
+    "EX": {
+      "SSP": 116,
+      "ESP": 113,
+      "CDP": 100,
+      "CCP": 113,
+      "CO": 120,
+      "REV": 88,
+      "BUG": 97,
+      "PCC": 163
+    },
+    "SS": {
+      "SSP": 100,
+      "ESP": 100,
+      "CDP": 82,
+      "CCP": 97,
+      "CO": 109,
+      "REV": 76,
+      "BUG": 86,
+      "PCC": 142
+    },
+    "MM": {
+      "SSP": 89,
+      "ESP": 92,
+      "CDP": 80,
+      "CCP": 86,
+      "CO": 98,
+      "REV": 69,
+      "BUG": 78,
+      "PCC": 127
+    },
+    "NV": {
+      "SSP": 71,
+      "ESP": 77,
+      "CDP": 60,
+      "CCP": 75,
+      "CO": 79,
+      "REV": 52,
+      "BUG": 56,
+      "PCC": 107
+    }
+  },
+  "n_cella": {
+    "MA": {
+      "SSP": 94,
+      "ESP": 83,
+      "CDP": 11,
+      "CCP": 74,
+      "CO": 95,
+      "REV": 3,
+      "BUG": 21,
+      "PCC": 31
+    },
+    "EX": {
+      "SSP": 166,
+      "ESP": 154,
+      "CDP": 34,
+      "CCP": 105,
+      "CO": 99,
+      "REV": 5,
+      "BUG": 24,
+      "PCC": 38
+    },
+    "SS": {
+      "SSP": 181,
+      "ESP": 129,
+      "CDP": 27,
+      "CCP": 121,
+      "CO": 132,
+      "REV": 31,
+      "BUG": 18,
+      "PCC": 77
+    },
+    "MM": {
+      "SSP": 242,
+      "ESP": 203,
+      "CDP": 17,
+      "CCP": 73,
+      "CO": 107,
+      "REV": 10,
+      "BUG": 41,
+      "PCC": 45
+    },
+    "NV": {
+      "SSP": 307,
+      "ESP": 194,
+      "CDP": 26,
+      "CCP": 91,
+      "CO": 120,
+      "REV": 12,
+      "BUG": 20,
+      "PCC": 103
+    }
+  }
+}

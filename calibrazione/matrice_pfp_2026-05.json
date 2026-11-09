@@ -1,0 +1,59 @@
+{
+  "tipo": "idpa-tier0-pfp-matrice",
+  "versione": 1,
+  "riferimento": "SSP/SS = 100",
+  "fonte": "Default app (maggio 2026)",
+  "data": "2026-05",
+  "matrice": {
+    "MA": {
+      "SSP": 132,
+      "ESP": 139,
+      "CDP": 138,
+      "CCP": 127,
+      "CO": 139,
+      "REV": 131,
+      "BUG": 115,
+      "PCC": 170
+    },
+    "EX": {
+      "SSP": 118,
+      "ESP": 120,
+      "CDP": 114,
+      "CCP": 108,
+      "CO": 118,
+      "REV": 113,
+      "BUG": 104,
+      "PCC": 150
+    },
+    "SS": {
+      "SSP": 100,
+      "ESP": 102,
+      "CDP": 98,
+      "CCP": 94,
+      "CO": 102,
+      "REV": 88,
+      "BUG": 84,
+      "PCC": 134
+    },
+    "MM": {
+      "SSP": 87,
+      "ESP": 91,
+      "CDP": 88,
+      "CCP": 73,
+      "CO": 89,
+      "REV": 70,
+      "BUG": 66,
+      "PCC": 118
+    },
+    "NV": {
+      "SSP": 71,
+      "ESP": 79,
+      "CDP": 71,
+      "CCP": 66,
+      "CO": 74,
+      "REV": 63,
+      "BUG": 60,
+      "PCC": 110
+    }
+  }
+}
