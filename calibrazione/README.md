@@ -1,6 +1,6 @@
 # Calibrazione matrice Pound for Pound (pxp)
 
-- `calibra_pxp.py <cartella gare>`: stima la matrice dai CSV PractiScore (`AAAA-MM-GG nome.csv`), stampa la validazione temporale e scrive il JSON importabile nell'app.
+- `calibra_pxp.py <cartella gare>`: stima la matrice dai CSV PractiScore (`AAAA-MM-GG nome.csv`), stampa la validazione temporale e scrive `matrice_pfp_calcolata.json` (importabile nell'app).
 - `test_pxp.py <cartella gare>`: percentile medio per classe, divisione e cella con la matrice di maggio 2026 (0 = primo, 0,5 = neutro).
 - `matrice_pfp_2026-11-09.json`: matrice in uso (default dell'app). `matrice_pfp_2026-05.json`: matrice precedente.
 

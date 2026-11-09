@@ -70,4 +70,4 @@ if __name__=='__main__':
     def rms(t): 
         v=[(x[1]-.5)**2*x[0] for k,x in t.items() if '/' in k]; return math.sqrt(sum(v)/sum(x[0] for k,x in t.items() if '/' in k))
     print(f'scarto medio celle (pesato n): vecchia {rms(t_old):.3f}  nuova {rms(t_new):.3f}  in-sample {rms(t_in):.3f}')
-    json.dump({'tipo':'idpa-tier0-pfp-matrice','versione':1,'riferimento':'SSP/SS = 100','fonte':'Calibrazione pxp su 30 gare 2025-01..2026-11','data':'2026-11-09','divisioni':DIVS,'classi':CLS,'matrice':M,'n_cella':{c:{d:n[(d,c)] for d in DIVS} for c in CLS}},open('/home/claude/pxp/matrice_pfp_2026-11-09.json','w'),indent=2)
+    json.dump({'tipo':'idpa-tier0-pfp-matrice','versione':1,'riferimento':'SSP/SS = 100','fonte':'Calibrazione pxp su 30 gare 2025-01..2026-11','data':'2026-11-09','divisioni':DIVS,'classi':CLS,'matrice':M,'n_cella':{c:{d:n[(d,c)] for d in DIVS} for c in CLS}},open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'matrice_pfp_calcolata.json'),'w'),indent=2)
