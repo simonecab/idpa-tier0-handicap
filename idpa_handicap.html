@@ -262,6 +262,10 @@ table.rtab tbody tr:hover td { background: var(--card); }
   <div class="section-label">
     Matrice handicap — divisione × classe
     <button class="btn-link" onclick="resetMatrix()">Ripristina default</button>
+    <button class="btn-link" onclick="exportMatrix()">Esporta matrice</button>
+    <button class="btn-link" onclick="document.getElementById('inp-matrix').click()">Importa matrice</button>
+    <input type="file" id="inp-matrix" accept=".json,application/json" style="display:none">
+    <span id="matrixSource" style="text-transform:none;letter-spacing:0"></span>
   </div>
   <div class="matrix-wrap">
     <table class="matrix-table" id="matrixTable"></table>
@@ -336,6 +340,9 @@ const DEFAULT_MATRIX = {
   NV: { SSP: 71, ESP: 79, CDP: 71, CCP: 66, CO: 74, REV: 63, BUG: 60, PCC:110 },
 };
 
+const DEFAULT_MATRIX_INFO = { fonte: 'Default app (maggio 2026)', data: '2026-05' };
+const MATRIX_STORE_KEY = 'idpa_tier0_matrix_v1';
+
 // Tutte le righe hanno una base empirica (anche se MA/EX/NV usano il classifier come proxy inter-classe)
 const EMPIRICAL = { MA:true, EX:true, SS:true, MM:true, NV:true };
 
@@ -389,6 +396,100 @@ function resetMatrix() {
     const el = document.getElementById(`mx-${cls}-${div}`);
     if (el && !el.readOnly) el.value = DEFAULT_MATRIX[cls][div];
   }));
+  try { localStorage.removeItem(MATRIX_STORE_KEY); } catch (e) {}
+  setMatrixSource(DEFAULT_MATRIX_INFO.fonte, DEFAULT_MATRIX_INFO.data);
+  validate();
+}
+
+// ─── PERSISTENZA / IMPORT / EXPORT MATRICE ─────────────────────────────────
+let matrixInfo = { ...DEFAULT_MATRIX_INFO };
+
+function setMatrixSource(fonte, data) {
+  matrixInfo = { fonte, data };
+  document.getElementById('matrixSource').textContent = `· in uso: ${fonte}${data ? ' (' + data + ')' : ''}`;
+}
+
+function applyMatrix(values) {
+  // values: { CLS: { DIV: n } }; celle mancanti o non valide restano invariate
+  CLASSES.forEach(cls => DIVISIONS.forEach(div => {
+    const el = document.getElementById(`mx-${cls}-${div}`);
+    const v  = values && values[cls] ? Number(values[cls][div]) : NaN;
+    if (el && !el.readOnly && isFinite(v) && v > 0) el.value = v;
+  }));
+}
+
+function saveMatrix() {
+  try {
+    localStorage.setItem(MATRIX_STORE_KEY, JSON.stringify({ ...matrixInfo, matrice: readMatrix() }));
+  } catch (e) {}
+}
+
+function loadSavedMatrix() {
+  try {
+    const raw = localStorage.getItem(MATRIX_STORE_KEY);
+    if (!raw) return false;
+    const obj = JSON.parse(raw);
+    applyMatrix(obj.matrice);
+    setMatrixSource(obj.fonte || 'Modificata a mano', obj.data || '');
+    return true;
+  } catch (e) { return false; }
+}
+
+function onMatrixEdit() {
+  if (!/modificata a mano/i.test(matrixInfo.fonte))
+    setMatrixSource(matrixInfo.fonte + ' · modificata a mano', new Date().toISOString().slice(0,10));
+  saveMatrix();
+  validate();
+}
+
+function exportMatrix() {
+  const obj = {
+    tipo: 'idpa-tier0-pfp-matrice',
+    versione: 1,
+    riferimento: 'SSP/SS = 100',
+    fonte: matrixInfo.fonte,
+    data: matrixInfo.data,
+    esportata: new Date().toISOString(),
+    divisioni: DIVISIONS,
+    classi: CLASSES,
+    matrice: readMatrix(),
+  };
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `matrice_pfp_${new Date().toISOString().slice(0,10)}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function wireMatrix() {
+  document.getElementById('matrixTable').addEventListener('change', e => {
+    if (e.target && e.target.matches('input[type="number"]')) onMatrixEdit();
+  });
+  document.getElementById('inp-matrix').addEventListener('change', function () {
+    const f = this.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = e => {
+      let obj;
+      try { obj = JSON.parse(e.target.result); } catch (err) { showMatrixMsg('File non valido: non è JSON.'); return; }
+      const m = obj && obj.matrice;
+      if (!m || typeof m !== 'object') { showMatrixMsg('File non valido: manca il campo "matrice".'); return; }
+      const ref = m.SS && Number(m.SS.SSP);
+      if (ref && ref !== 100) { showMatrixMsg(`File rifiutato: SSP/SS = ${ref}, deve essere 100.`); return; }
+      applyMatrix(m);
+      setMatrixSource(obj.fonte || f.name, obj.data || '');
+      saveMatrix();
+      showMatrixMsg('');
+      validate();
+    };
+    rd.readAsText(f, 'UTF-8');
+    this.value = '';
+  });
+}
+
+function showMatrixMsg(msg) {
+  const el = document.getElementById('matrixSource');
+  if (msg) { el.textContent = '⚠ ' + msg; el.style.color = 'var(--red)'; }
+  else el.style.color = '';
 }
 
 function readMatrix() {
@@ -862,6 +963,9 @@ function exportCSV() {
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 buildMatrixUI();
+setMatrixSource(DEFAULT_MATRIX_INFO.fonte, DEFAULT_MATRIX_INFO.data);
+loadSavedMatrix();
+wireMatrix();
 wireFiles();
 setMode('squadra');
 </script>
