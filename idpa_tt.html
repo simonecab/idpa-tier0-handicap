@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDPA · TT Handicap</title>
+<style>
+:root{--bg:#12131a;--surface:#1c1e2a;--card:#252840;--border:#2a2d42;--accent:#e94560;--blue:#4c9fff;--text:#eaeaea;--muted:#7a7a9a;--green:#4caf50;--yellow:#ffa726;--red:#ef5350;--gold:#ffd700;--silver:#c0c0c0;--bronze:#cd7f32}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;padding:2rem 1rem}
+.container{max-width:1060px;margin:0 auto}
+h1{font-size:1.6rem;color:var(--accent);margin-bottom:.2rem}
+.sub{color:var(--muted);font-size:.82rem;margin-bottom:1.5rem;line-height:1.5}
+.row{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.card{flex:1 1 240px;background:var(--surface);border:2px dashed var(--border);border-radius:10px;padding:1rem;cursor:pointer;transition:border-color .18s}
+.card:hover{border-color:var(--blue)}.card.ok{border-style:solid;border-color:var(--green)}
+.card input[type=file]{display:none}
+.lbl{font-size:.69rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.4rem}
+.val{font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hint{font-size:.68rem;color:var(--muted);margin-top:.3rem;font-style:italic}
+.panel{background:var(--surface);border-radius:10px;padding:.9rem 1rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.panel label{font-size:.9rem}
+.panel input[type=number]{width:90px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:1rem;font-weight:600;padding:.3rem .5rem;text-align:center}
+.panel input.req{border-color:var(--accent)}
+.btn{padding:.55rem 1.4rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn2{padding:.35rem .85rem;border:1px solid var(--border);border-radius:7px;background:transparent;color:var(--text);font-size:.82rem;cursor:pointer}
+.msg{font-size:.82rem;margin-bottom:1rem}.err{color:var(--red)}.warn{color:var(--yellow)}.okm{color:var(--green)}
+.stats{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem}
+.stat{background:var(--surface);border-radius:8px;padding:.6rem .9rem;min-width:150px}
+.stat b{display:block;font-size:1.15rem}.stat span{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{background:var(--card);padding:.5rem .6rem;text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);white-space:nowrap;cursor:pointer;user-select:none}
+th.num,td.num{text-align:right}
+td{padding:.45rem .6rem;border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap}
+tr:hover td{background:var(--card)}
+.rk{font-weight:700}.r1{color:var(--gold)}.r2{color:var(--silver)}.r3{color:var(--bronze)}
+.better{color:var(--green);font-weight:700}.worse{color:var(--red);font-weight:700}
+.dim{color:var(--muted);font-size:.78rem}
+.sect{font-size:.75rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:1.5rem 0 .5rem}
+.foot{font-size:.72rem;color:var(--muted);margin-top:1.5rem;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🎯 IDPA · TT Handicap</h1>
+<p class="sub">Gare tier 0: ogni tiratore confrontato con il proprio TT (secondi per colpo) nella stessa divisione.<br>
+TT gara = punteggio finale (PD e penalità incluse) / colpi minimi. Rapporto = TT gara / TT handicap: sotto 1 = meglio del suo handicap.</p>
+
+<div class="row">
+  <div class="card" id="cGara" onclick="document.getElementById('fGara').click()">
+    <div class="lbl">Risultati gara (CSV PractiScore)</div>
+    <div class="val" id="nGara">Seleziona il CSV…</div>
+    <div class="hint">export standard IDPA</div>
+    <input type="file" id="fGara" accept=".csv">
+  </div>
+  <div class="card ok" id="cTT" onclick="document.getElementById('fTT').click()">
+    <div class="lbl">Tabella TT handicap</div>
+    <div class="val" id="nTT"></div>
+    <div class="hint">clic per caricarne una aggiornata (tt_compensato_AAAA-MM-GG.csv)</div>
+    <input type="file" id="fTT" accept=".csv">
+  </div>
+</div>
+
+<div class="panel">
+  <label for="colpi">Colpi minimi della gara <b style="color:var(--accent)">*</b></label>
+  <input type="number" id="colpi" class="req" min="1" step="1" placeholder="es. 120">
+  <button class="btn" id="calc" disabled onclick="calcola()">Calcola</button>
+  <span class="dim" id="why">Carica il CSV e inserisci i colpi minimi.</span>
+</div>
+
+<div id="msgs"></div>
+<div id="out" style="display:none">
+  <div class="stats" id="stats"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+    <div class="sect" style="margin:0">Classifica per miglioramento rispetto al TT handicap</div>
+    <button class="btn2" onclick="esporta()">⬇ Esporta CSV</button>
+  </div>
+  <div class="wrap"><table id="tab"></table></div>
+  <div id="senza"></div>
+  <p class="foot">
+  <b>Rapporto</b> = TT gara / TT handicap. 0,90 = il 10% più veloce del proprio handicap. L'ordine per rapporto non dipende dalla difficoltà della gara.<br>
+  <b>Indice gara</b> = mediana dei rapporti: stima quanto questa gara è stata più lenta (>1) o più veloce (&lt;1) di una gara media.<br>
+  <b>Al netto della gara</b> = rapporto / indice gara: miglioramento rispetto agli altri tiratori oggi.<br>
+  TT handicap: media dei TT delle gare 2025-2026, compensati per la difficoltà di ogni gara; solo tiratori con almeno 2 gare nella divisione. Uso esclusivo per gare tier 0.
+  </p>
+</div>
+</div>
+
+<script>
+const TT_DEFAULT = [["Pavone Domenico Mirko","IT810986","BUG","MA",3,1.516,0.089],["Nitti Renato","IT2040","BUG","MA",11,1.656,0.095],["Purificato Antonio","IT161492","BUG","EX",10,1.692,0.106],["Caon Daniele","IT1004137","BUG","MM",5,1.773,0.105],["Cartolano Maurizio","IT281324","BUG","EX",7,1.792,0.134],["Scalone Nicola","IT940794","BUG","SS",2,1.801,0.076],["CERVINI Patrick","IT1023427","BUG","EX",6,1.868,0.119],["Onorato Francesco","IT751074","BUG","SS",2,1.871,0.111],["Melis Raimondo","IT1024773","BUG","SS",2,1.923,0.243],["Luzzi Claudio","IT1004987","BUG","MM",20,2.201,0.211],["Marciano Roberto","IT765652","BUG","SS",5,2.416,0.087],["Iannelli Federico","IT1349","BUG","EX",3,2.465,0.304],["Morena Lorenzo","IT484136","BUG","MM",10,2.472,0.209],["Livdi Maria egle","IT1034241","BUG","NV",2,3.291,0.217],["Banzo Giuseppe","IT1020920","BUG","NV",13,4.014,0.437],["leone Fabio","IT1016635","CCP","MA",16,1.168,0.115],["Casciello Giuseppe","IT1020803","CCP","MA",5,1.239,0.099],["Bardella Alberto","IT966043","CCP","MA",2,1.255,0.052],["Maienza Peppe","IT0215","CCP","MA",5,1.258,0.058],["Manea Dragos","IT2260","CCP","MA",5,1.269,0.047],["Bettoni Cruciano","IT1022840","CCP","EX",3,1.341,0.135],["Carpi Guido","IT624085","CCP","MA",3,1.35,0.146],["Vaccarini Claudio","IT830774","CCP","EX",5,1.393,0.075],["Caon Daniele","IT1004137","CCP","MA",6,1.413,0.14],["Santi Maurizio","IT709081","CCP","MA",7,1.423,0.062],["Galandrini Massimo","IT424992","CCP","MA",16,1.431,0.132],["Falcione Fabio","IT1002987","CCP","MA",15,1.434,0.121],["BROEGG Maurizio","IT855907","CCP","MA",4,1.447,0.105],["Marra Antonio","IT1005481","CCP","EX",3,1.497,0.163],["Purificato Antonio","IT161492","CCP","EX",4,1.5,0.033],["Lorusso Alessio","IT713468","CCP","EX",2,1.504,0.051],["Sorrentino Pasquale Davide","IT985447","CCP","MA",2,1.511,0.168],["Manzari Gennaro","IT1027470","CCP","EX",2,1.529,0.046],["Cappella Nicola","IT1033470","CCP","SS",2,1.546,0.013],["Cavidossi Alessandro","IT408155","CCP","EX",5,1.548,0.05],["Falcone Leonardo","IT1009908","CCP","SS",3,1.552,0.11],["D'Arrigo Cosimo","IT1013542","CCP","EX",4,1.553,0.066],["Tufano Francesco","IT1031422","CCP","EX",8,1.564,0.108],["Di Porto Luca","IT1002388","CCP","EX",15,1.575,0.093],["Buresti Luca","IT276128","CCP","EX",2,1.592,0.061],["Dima Alfredo","IT1001104","CCP","EX",3,1.621,0.007],["Correale Roberto","IT990542","CCP","EX",2,1.627,0.238],["Del Monte Domiziano","IT258013","CCP","EX",8,1.628,0.154],["Fazzolari Giovanbattista","IT1015800","CCP","EX",9,1.637,0.109],["Motzo Riccardo","IT1009533","CCP","SS",8,1.669,0.099],["Ercolini Gianluca","IT166879","CCP","MA",4,1.674,0.16],["Semprini Stefano","IT1008529","CCP","EX",6,1.71,0.097],["Ferri Salvatore-Valerio","IT1925","CCP","EX",2,1.721,0.06],["Chiappini Ugo","IT1009524","CCP","SS",13,1.794,0.091],["Di Porto Massimo","IT194826","CCP","SS",6,1.806,0.133],["Moccia Ottavio","IT1017100","CCP","SS",6,1.813,0.179],["Nota Cristina","IT1028228","CCP","SS",16,1.852,0.103],["Di Veroli Alessandro","11","CCP","NV",2,1.853,0.072],["Shkurashivska Dorota","IT1016796","CCP","NV",7,1.86,0.129],["Morgia Romano","IT0064","CCP","SS",11,1.863,0.13],["Di Porto Gavriel","IT976620","CCP","MM",7,1.868,0.104],["Sonnino Andrea","IT1024566","CCP","NV",3,1.869,0.043],["Caló Angelo","IT1034031","CCP","SS",9,1.907,0.194],["Ambrosio Frank","IT1019964","CCP","SS",2,1.907,0.195],["Perugia David","IT1013325","CCP","SS",8,1.915,0.106],["Di Somma Catello","IT1000561","CCP","SS",6,1.918,0.139],["Iliceto Gabriele","IT1016555","CCP","MM",2,1.996,0.023],["Corvino Michele","IT1003697","CCP","MM",3,2.006,0.105],["Rossi Marco","IT1016639","CCP","MM",4,2.038,0.073],["Falcelli Renzo","IT1025856","CCP","SS",5,2.049,0.18],["Cabasino Simone","IT1002935","CCP","SS",4,2.091,0.197],["Bianchi Giuseppe Luigi","IT1034302","CCP","MM",9,2.098,0.176],["Ferrigni Rosaria","IT1018907","CCP","NV",8,2.126,0.182],["Spinucci Ugo","IT1029349","CCP","MM",5,2.133,0.085],["Pratesi Simone","IT901779","CCP","EX",2,2.142,0.197],["Incaini Stefano","IT340721","CCP","MM",6,2.149,0.182],["Marciano Roberto","IT765652","CCP","MM",5,2.154,0.215],["Pulciani Paolo","IT1019053","CCP","MM",3,2.174,0.161],["Borriello domenico","IT1029083","CCP","NV",4,2.183,0.131],["Nahum Fabrizio","IT1037099","CCP","MM",3,2.195,0.122],["Spedone Valentino","IT1025845","CCP","NV",3,2.196,0.254],["Carfagna Franco","IT1022711","CCP","MM",2,2.202,0.293],["Dominici Francesco","IT1034525","CCP","NV",3,2.301,0.213],["Borji Mohamed","IT1032373","CCP","NV",5,2.378,0.26],["Astrologo Stefano","IT1028972","CCP","NV",4,2.414,0.26],["Galderisi Luigi","IT1033839","CCP","NV",9,2.441,0.377],["Fiano Stefano","IT1033026","CCP","NV",8,2.468,0.213],["Efrati Renato","IT1006215","CCP","NV",2,2.509,0.166],["Pellegrini Noemi","IT1020357","CCP","NV",2,2.596,0.272],["Ciccotosto Debora","IT1038298","CCP","NV",2,2.696,0.291],["Cefalo Maurizio","IT1002648","CCP","NV",2,2.797,0.41],["Basile Angelo","IT1017979","CCP","MM",2,2.841,0.057],["Roffi Mario Davide","IT1017133","CCP","NV",2,2.847,0.265],["Piazza O Sed Samuel","IT1030400","CCP","NV",2,2.968,0.543],["Cantiani Massimo","IT1035254","CCP","NV",3,3.238,0.546],["Logorano Giuseppe","IT979239","CDP","MA",2,1.435,0.06],["Manea Dragos","IT2260","CDP","MA",4,1.465,0.062],["Cavidossi Alessandro","IT408155","CDP","EX",14,1.613,0.104],["Mascii Claudio","IT147068","CDP","EX",4,1.789,0.236],["Cacio Osvaldo","IT323377","CDP","EX",4,1.837,0.047],["Pennacchio Pasquale","IT1013517","CDP","EX",3,1.879,0.056],["De Girolamo Nello","IT1016573","CDP","MM",4,1.981,0.143],["Giacomelli Luca","IT772868","CDP","SS",7,2.029,0.256],["Pellegrini Andrea","IT257074","CDP","EX",12,2.178,0.213],["Livdi Luis Carlos","IT1006388","CDP","SS",3,2.211,0.13],["Castellana Salvatore","IT953871","CDP","MM",2,2.253,0.359],["Cariolo Giorgio","IT1017792","CDP","MM",5,2.28,0.237],["Santini Roberto","IT1019503","CDP","NV",2,2.534,0.151],["Mazzetti Massimo","IT1012744","CDP","NV",4,2.583,0.3],["Ferrigni Pier Francesco","IT1032704","CDP","NV",2,2.685,0.041],["Raffaelli Antonio","IT664542","CDP","SS",2,2.824,0.608],["Ribellino GIUSEPPE","IT473170","CDP","NV",2,3.654,0.544],["Carpiceci Davide","IT1037802","CDP","NV",8,3.819,0.556],["Castelletti Paolo","IT1028201","CO","MA",11,0.937,0.062],["Mundo Luigi","IT888481","CO","MA",4,1.109,0.128],["Romano Antonio","IT1019814","CO","MA",11,1.17,0.11],["Ratta Salvatore","IT1017971","CO","EX",2,1.181,0.091],["Costarella Vincenzo","IT1020021","CO","MA",3,1.19,0.078],["Raponi Giovanni","IT830148","CO","MA",2,1.196,0.014],["Tenti Riccardo","IT1010695","CO","MA",5,1.205,0.095],["Baraldi Alessio","IT1002422","CO","MA",3,1.22,0.02],["Caciolo Roberto","IT556200","CO","MA",4,1.248,0.081],["Castellani Roberto","IT1025419","CO","MA",11,1.256,0.079],["Mari Massimo","IT1797","CO","MA",4,1.285,0.113],["Alessi Gabriele","IT1775","CO","MA",5,1.291,0.043],["Blasi Giuseppe","IT446931","CO","EX",6,1.307,0.12],["Spiccia Marco","IT1030923","CO","MA",17,1.33,0.153],["Di Giuseppe Marco","IT1017919","CO","EX",9,1.342,0.079],["Fiamma Luca","IT2100","CO","MA",3,1.346,0.05],["Bray Andrea","IT443702","CO","EX",6,1.361,0.124],["Ciminelli Simplicio","IT645317","CO","SS",2,1.366,0.115],["Abatecola Christian","IT910506","CO","MA",2,1.368,0.222],["Franco Andrea","IT1027900","CO","MM",4,1.374,0.219],["Campoli Marco","IT1035307","CO","EX",5,1.401,0.11],["OZTURK Baris","TR1017473","CO","EX",2,1.404,0.027],["Maestre alberto","IT1017026","CO","EX",6,1.408,0.075],["Iorio Gennaro","IT325036","CO","MA",2,1.411,0.011],["Izzo Fernando","IT208314","CO","MA",9,1.429,0.139],["Dei casamassimi Claudio massimo","XX","CO","NV",2,1.446,0.019],["Mattiocco Federico","IT1001357","CO","EX",2,1.45,0.107],["Gisondi Giuseppe","IT1018052","CO","MM",2,1.454,0.094],["Pieri Daniele","IT1002715","CO","EX",6,1.486,0.081],["Varoutsas George","IT1468","CO","EX",5,1.495,0.113],["Pantaleo Aldo","IT495250","CO","SS",2,1.502,0.02],["Messina Francesco","IT1000384","CO","SS",7,1.513,0.155],["Bisceglia Sisto","IT1017982","CO","SS",2,1.527,0.008],["Aleotti Andrea","IT521158","CO","EX",5,1.532,0.087],["iannibelli Antonio","IT1022999","CO","SS",2,1.534,0.038],["Brescia Francesco","IT1023740","CO","SS",5,1.57,0.114],["Lattanzi Emanuele","IT764620","CO","EX",19,1.57,0.119],["Presutti Agostino","IT317334","CO","SS",8,1.575,0.151],["Baglieri Francesco","IT600735","CO","SS",4,1.576,0.058],["Torresani Marco","IT1002854","CO","SS",5,1.586,0.057],["Iacono Massimiliano","IT1009097","CO","SS",12,1.598,0.066],["Sollazzo Mattia","IT1027324","CO","MM",2,1.61,0.007],["Fineo Peppe","IT1019829","CO","SS",2,1.61,0.134],["Barchi Mauro","IT420970","CO","EX",14,1.645,0.122],["Bonelli Gian Paolo","IT429930","CO","SS",3,1.654,0.104],["Vasile Ivan Andrea","IT1019509","CO","SS",3,1.668,0.063],["Paolantonio Francesco","IT1029262","CO","MM",2,1.672,0.023],["Cella Alessandro","IT1027115","CO","MM",13,1.699,0.167],["Marangi Francesco","IT1033765","CO","SS",2,1.703,0.194],["Giacomelli Luca","IT772868","CO","SS",5,1.713,0.212],["Gulino Angelo","IT1004727","CO","SS",9,1.719,0.072],["Placidi Andrea","IT1013221","CO","MM",2,1.721,0.121],["Corbucci Enzo","IT1017378","CO","SS",9,1.742,0.143],["Coppola Gabriele","IT346020","CO","EX",2,1.751,0.228],["Bastianini Daniele","IT1037244","CO","MM",3,1.757,0.141],["Livdi Luis Carlos","IT1006388","CO","MM",2,1.77,0.228],["Infantino Corrado","IT1023430","CO","SS",10,1.772,0.124],["Canelli Diego","IT1019442","CO","NV",4,1.791,0.153],["Bagiacchi Marco","IT1035309","CO","NV",2,1.829,0.05],["Bunone Giuseppe","IT398823","CO","MM",5,1.852,0.135],["Onorato Francesco","IT751074","CO","SS",2,1.869,0.171],["Morlano Lucio","IT1035471","CO","MM",9,1.888,0.262],["Borji Mohamed","IT1032373","CO","NV",4,1.903,0.21],["Marucci Gianluca","IT423587","CO","NV",5,1.906,0.179],["Amatucci Tiziano","IT1022833","CO","NV",6,1.916,0.078],["Cecere Davide","IT1015015","CO","NV",2,1.923,0.123],["Salerno Roberto","IT122114","CO","SS",3,1.931,0.07],["Calcagni Enzo","IT1034929","CO","MM",3,1.953,0.296],["Uda Giovanni Maria","IT1027970","CO","MM",7,1.962,0.137],["Taddei Edoardo","IT1038017","CO","MM",3,1.994,0.298],["Ciarloni Fulvio","IT1031654","CO","NV",2,2.017,0.037],["Morzella Daniele","IT1029408","CO","MM",12,2.049,0.544],["Mastroianni Baldassarre","IT1006003","CO","MM",3,2.068,0.37],["Caló Angelo","IT1034031","CO","NV",4,2.09,0.104],["Gilles Pascal","IT546029","CO","MM",11,2.14,0.103],["Nota Cristina","IT1028228","CO","NV",2,2.334,0.142],["Acciarito Domenico","IT1027972","CO","NV",2,2.447,0.254],["di veroli Cesare","IT1038240","CO","NV",5,2.453,0.311],["Scarchini Moreno","IT1020465","CO","NV",7,2.54,0.216],["Longobardi Isidoro","IT1031932","CO","NV",3,2.562,0.538],["Mura Stefano","IT1037415","CO","NV",4,2.566,0.302],["Ricci Sandro","IT1016976","CO","NV",6,2.798,0.143],["Vinci Francesca Romana","IT1034576","CO","NV",2,2.984,0.186],["Vittori Stefano","IT299027","CO","MM",6,3.009,0.106],["Cattiveria Massimo","IT1025926","CO","NV",2,3.406,1.653],["Petri Fabio","IT1034539","CO","NV",2,3.543,0.502],["Rossi Stefano","IT160870","ESP","MA",2,1.096,0.097],["leone Fabio","IT1016635","ESP","MA",2,1.122,0.027],["Pedroli Nicola","IT1018110","ESP","MA",2,1.156,0.17],["Farnetani Marco","IT330719","ESP","MA",2,1.174,0.0],["Bottone Mariano","IT451491","ESP","MA",10,1.221,0.074],["Tardio Matteo","IT1020687","ESP","MA",4,1.226,0.031],["Bettoni Cruciano","IT1022840","ESP","EX",2,1.295,0.017],["Morino Gianluca","IT1020207","ESP","MA",4,1.302,0.063],["Ermini Andrea","IT1027555","ESP","MA",5,1.325,0.032],["Montaini Iacopo","IT996024","ESP","MA",3,1.369,0.129],["Fagioli Riccardo","IT175241","ESP","MA",4,1.378,0.055],["Mari Massimo","IT1797","ESP","MA",2,1.397,0.049],["Cappella Max","IT1033470","ESP","EX",2,1.402,0.038],["Failla Roberto","IT1881","ESP","MA",7,1.422,0.043],["Franco Andrea","IT1027900","ESP","MM",2,1.431,0.073],["Pieri Daniele","IT1002715","ESP","MA",2,1.436,0.012],["Caon Daniele","IT1004137","ESP","EX",2,1.44,0.026],["Acciari Carlo","IT581729","ESP","MA",20,1.483,0.082],["MANCUSO Giuseppe","IT406011","ESP","MA",9,1.486,0.082],["Bergami Sergio","IT350458","ESP","MA",10,1.492,0.159],["Santoleri Sandro","IT1023731","ESP","EX",18,1.508,0.087],["Galandrini Massimo","IT424992","ESP","MA",4,1.511,0.08],["Gisondi Giuseppe","IT1018052","ESP","SS",5,1.512,0.033],["Vaccarini Claudio","IT830774","ESP","EX",6,1.514,0.071],["Melis Raimondo","IT1024773","ESP","EX",6,1.514,0.074],["Sammartino Fabrizio","IT1018213","ESP","EX",14,1.524,0.117],["Logorano Giuseppe","IT979239","ESP","MA",2,1.525,0.444],["Segnalini Stefano","IT1018555","ESP","EX",2,1.529,0.008],["Tullio Giancarlo","IT870161","ESP","EX",17,1.537,0.123],["D'epiro Achille","IT1013203","ESP","NV",2,1.538,0.033],["D'Arrigo Cosimo","IT1013542","ESP","EX",4,1.539,0.064],["Zannini Alessandro","IT1009351","ESP","EX",3,1.554,0.291],["Centofanti Diego","IT982134","ESP","NV",2,1.568,0.078],["Ignesti Filippi Gabriele","IT1025268","ESP","SS",4,1.576,0.103],["Roberto Pierangelo","IT1011064","ESP","EX",7,1.582,0.223],["Della Manna Angelo","IT922727","ESP","EX",2,1.586,0.017],["Nevadini Andrea","IT1015688","ESP","EX",2,1.586,0.004],["CERVINI Patrick","IT1023427","ESP","EX",2,1.592,0.023],["Pecchia Eugenio","IT1025690","ESP","SS",2,1.604,0.299],["Bonelli Gian Paolo","IT429930","ESP","EX",10,1.608,0.118],["Gulino Angelo","IT1004727","ESP","EX",4,1.619,0.18],["Iorio Gennaro","IT325036","ESP","MA",2,1.626,0.185],["Chirieleison Fabio","IT1029828","ESP","EX",18,1.628,0.162],["Infantino Corrado","IT1023430","ESP","EX",2,1.641,0.072],["Cecconi Emiliano","IT1023645","ESP","EX",17,1.65,0.082],["Marchetti Francesco","IT1015385","ESP","EX",2,1.652,0.085],["Russo Francesco","IT1000380","ESP","EX",2,1.677,0.139],["D'Andrea Lucio","IT1038369","ESP","NV",2,1.701,0.016],["Baioni Nicola","IT1015038","ESP","SS",2,1.705,0.06],["Guarniera Giorgio","IT1010658","ESP","SS",18,1.708,0.086],["Andreucci Federico","IT1015500","ESP","SS",2,1.709,0.019],["Triolo Luca","IT1035544","ESP","MM",6,1.718,0.057],["Mingione Stanislao","IT1009455","ESP","SS",9,1.72,0.102],["Cappella Nicola","IT1033470","ESP","EX",5,1.721,0.204],["Brescia Francesco","IT1023740","ESP","SS",12,1.722,0.096],["Crosta Andrea","IT1023634","ESP","SS",5,1.731,0.067],["Oliva Vito","IT1032077","ESP","SS",3,1.735,0.105],["Ludovisi Andrea","IT1036215","ESP","MM",4,1.735,0.067],["Viavattene Roberto","IT1002876","ESP","EX",2,1.76,0.223],["Ciro Ascione","IT1006180","ESP","MM",2,1.767,0.097],["Sonnino Samuele","IT1032036","ESP","SS",17,1.79,0.175],["Bargossi Mirko","IT1027203","ESP","SS",2,1.792,0.069],["Spedone Valentino","IT1025845","ESP","MM",2,1.797,0.124],["Cabasino Simone","IT1002935","ESP","MM",16,1.804,0.127],["Placidi Andrea","IT1013221","ESP","MM",2,1.808,0.078],["Catasta Stefano","IT1001427","ESP","MM",8,1.812,0.131],["CARRIERI Francesco","IT1022681","ESP","SS",2,1.82,0.034],["Bricca Marco","IT344572","ESP","MM",4,1.829,0.175],["Sala Roberto","IT1007709","ESP","SS",2,1.836,0.078],["Torcia Emanuele","IT1032799","ESP","MM",2,1.855,0.0],["Conti Roberto","IT829959","ESP","SS",3,1.857,0.101],["Palazzini Edoardo","IT1030879","ESP","MM",7,1.868,0.134],["Borocci Maurizio","IT1030824","ESP","MM",13,1.877,0.129],["Imperiali Fabio","IT901473","ESP","SS",4,1.9,0.084],["Braida Pier Luigi","IT1026222","ESP","MM",9,1.902,0.177],["Ferrigni Pier Francesco","IT1032704","ESP","MM",6,1.916,0.284],["Colomberti Giorgio","IT1012006","ESP","MM",6,1.923,0.15],["Mauro Domenico","IT1028657","ESP","MM",3,1.935,0.109],["Casponi Guido","IT657552","ESP","SS",3,2.009,0.209],["Trovarelli Loris","IT1036868","ESP","NV",2,2.01,0.004],["Livi Daniele","IT1014859","ESP","MM",2,2.012,0.588],["Bisceglia Sisto","IT1017982","ESP","NV",2,2.013,0.118],["Marini Fabrizio","IT1034020","ESP","MM",11,2.054,0.174],["Pescosolido Fabio","IT1015023","ESP","MM",2,2.065,0.179],["Ferrari Michele","*****","ESP","NV",3,2.084,0.118],["Longobardi Isidoro","IT1031932","ESP","MM",6,2.099,0.184],["Capogrosso Luca","IT1037209","ESP","MM",5,2.101,0.335],["Tinti Loreno","IT489783","ESP","SS",5,2.11,0.051],["Fantacci Arnaldo","IT108576","ESP","SS",11,2.115,0.174],["Dominici Francesco","IT1034525","ESP","MM",3,2.116,0.151],["Mattei Alessia","IT1037090","ESP","NV",5,2.146,0.103],["Maira Giovanni","IT1017798","ESP","MM",10,2.159,0.14],["Ciarloni Fulvio","IT1031654","ESP","MM",17,2.184,0.252],["Morasca Umberto","IT553261","ESP","SS",2,2.218,0.181],["Mancuso Angela","IT1009965","ESP","MM",11,2.223,0.236],["Torroni Walter","IT1021330","ESP","MM",2,2.227,0.002],["Tardito Fabrizio","IT1027714","ESP","NV",6,2.293,0.125],["Scialdone Aurelio","IT1002764","ESP","MM",9,2.293,0.135],["Saolini Gian Marco","IT1033979","ESP","NV",4,2.302,0.134],["Bonanni Mario","IT1033971","ESP","NV",10,2.322,0.272],["Moricoli Antonio","IT1018191","ESP","NV",8,2.342,0.242],["Priori Davide","IT1037743","ESP","NV",5,2.354,0.331],["Nardi Valerio","IT1037766","ESP","NV",6,2.364,0.065],["Salatino Stefano","IT1027583","ESP","MM",14,2.425,0.202],["Albanese Francesco","IT1032162","ESP","MM",2,2.567,0.269],["Tranfa Augusto","IT1036337","ESP","NV",3,2.609,0.583],["Marchetti Fabio","IT1030567","ESP","NV",5,2.709,0.28],["Costanzo Claudio","IT1022088","ESP","NV",4,2.727,0.217],["Avagliano Matteo","IT1012645","ESP","MM",3,2.75,0.124],["Andreucci Giorgio","IT1038918","ESP","NV",2,2.801,0.125],["Rovere Stefano","IT1027609","ESP","NV",2,2.856,0.339],["Righi Fabio","IT1001474","ESP","NV",3,3.353,0.189],["Scaccia Gerardo","IT1030563","ESP","NV",3,4.067,0.142],["Spinelli Rocco","IT1024820","PCC","MA",2,0.882,0.095],["Bray Andrea","IT443702","PCC","MA",11,0.884,0.099],["Gaboardi Riccardo","IT1031669","PCC","EX",4,0.943,0.049],["Mattiocco Federico","IT1001357","PCC","EX",10,0.972,0.059],["Bessi Mirko","IT1623","PCC","MA",16,1.028,0.085],["Aiello Sara","IT1002331","PCC","SS",3,1.031,0.073],["Albertoni Alberto","IT1017923","PCC","MA",4,1.049,0.194],["Incaini Stefano","IT340721","PCC","SS",7,1.094,0.064],["Erbaggio Stefano","IT1020388","PCC","SS",2,1.114,0.064],["Orlando Christian","IT243762","PCC","MA",2,1.119,0.092],["Cesaroni Cristina","IT981231","PCC","MM",4,1.124,0.042],["Stefanelli Umberto","IT1016633","PCC","NV",2,1.181,0.094],["Pisanu Riccardo","IT298686","PCC","SS",9,1.201,0.073],["Meggiato Maurizio","IT1011048","PCC","SS",5,1.217,0.089],["Zannini Aurora","IT1009350","PCC","SS",2,1.23,0.118],["Colarieti Dario Luis","IT210944","PCC","SS",9,1.25,0.125],["Pallottini Marco","IT600652","PCC","SS",8,1.252,0.105],["Saolini Gian Marco","IT1033979","PCC","EX",5,1.255,0.137],["Sarchioni Sergio","IT280496","PCC","EX",5,1.271,0.118],["Marcucci Mauro","IT492348","PCC","SS",8,1.277,0.061],["Cariolo Giorgio","IT1017792","PCC","MM",4,1.288,0.065],["Oliva Vito","IT1032077","PCC","NV",2,1.309,0.155],["Merendoni Claudio","IT1028277","PCC","MM",4,1.31,0.136],["Olivieri Andrea","IT132142","PCC","MM",5,1.316,0.145],["Pantaleo Aldo","IT495250","PCC","EX",2,1.34,0.215],["Salerno Roberto","IT122114","PCC","SS",4,1.347,0.171],["Lorusso Alessio","IT713468","PCC","MM",3,1.348,0.188],["Naldi Alfonso","IT1416","PCC","MM",3,1.373,0.065],["Resta Carmine","IT1014827","PCC","SS",8,1.459,0.403],["Correale Roberto","IT990542","PCC","MM",4,1.469,0.043],["Marcucci Enrico","IT1019717","PCC","MM",8,1.482,0.117],["Spedone Valentino","IT1025845","PCC","NV",2,1.486,0.074],["Loreti Alessandro","IT1014680","PCC","NV",8,1.495,0.122],["Trivisonno Eugenio","IT1035191","PCC","NV",3,1.518,0.06],["Crosta Andrea","IT1023634","PCC","NV",8,1.521,0.19],["Scaletta Davide","IT1764","PCC","MM",4,1.573,0.124],["Busi Franco","IT1528","PCC","NV",2,1.637,0.059],["Rossi Marco","IT1016639","PCC","NV",9,1.689,0.109],["Borriello Domenico","IT1029083","PCC","NV",7,1.692,0.063],["Palmieri Giuseppe Francesco","IT1019160","PCC","NV",2,1.736,0.058],["Benvenuti Franco","IT1023672","PCC","MM",5,1.944,0.196],["Pucci Elio","IT1036801","PCC","NV",3,2.012,0.283],["Maestrelli Lorenzo","IT1006934","PCC","NV",2,2.066,0.07],["Spedone Marzia Maria Teresa","IT1025844","PCC","NV",10,2.106,0.45],["Vittori Stefano","IT299027","PCC","NV",3,2.29,0.157],["Ansaloni Massimiliano","IT2222","REV","EX",3,1.822,0.039],["Pavone Domenico Mirko","IT810986","REV","MA",3,2.062,0.321],["Bisceglia Sisto","IT1017982","REV","MM",2,2.187,0.028],["Lentini Pierfrancesco","IT2113","REV","SS",25,2.284,0.212],["Perciante Pasquale","IT1016425","REV","EX",2,2.316,0.013],["Imperiali Fabio","IT901473","REV","MM",4,2.376,0.212],["Salerno Roberto","IT122114","REV","SS",3,2.458,0.057],["Gilles Pascal","IT546029","REV","MM",2,2.908,0.33],["Paolo Lanzilao","IT1023557","REV","NV",2,3.157,0.072],["Materazzo Stefano","IT1031033","REV","NV",5,3.668,0.261],["Solinas Fabio","IT1031032","REV","NV",5,3.928,0.245],["Broegg Luca","IT236526","SSP","MA",5,1.157,0.062],["SICILIANO Natale","IT1005912","SSP","MA",5,1.193,0.069],["Di Iorio Libero","IT1020450","SSP","MA",2,1.197,0.069],["Logorano Giuseppe","IT979239","SSP","MA",7,1.218,0.053],["Bettoni Cruciano","IT1022840","SSP","EX",2,1.251,0.038],["Fiamma Luca","IT2100","SSP","MA",6,1.256,0.069],["leone Fabio","IT1016635","SSP","MA",4,1.259,0.101],["Squillante Diego","IT1015830","SSP","MA",10,1.275,0.079],["Ielapi Massimiliano","IT876047","SSP","MA",15,1.279,0.149],["Ermini Andrea","IT1027555","SSP","MA",6,1.31,0.134],["Baris Gianluca","IT1000381","SSP","MA",3,1.316,0.047],["Nulli Gabbiani Cristiano","IT713575","SSP","MA",3,1.32,0.068],["Morelli Felice Federico","IT484212","SSP","EX",2,1.333,0.02],["Galizia Alessandro","IT1029847","SSP","EX",5,1.346,0.143],["D'Aiello Luigi","IT1013333","SSP","MA",4,1.366,0.128],["Fiorillo Giancarlo","IT1011127","SSP","EX",2,1.373,0.081],["Como Davide","IT1023497","SSP","EX",7,1.381,0.099],["Nocera Marco","IT1015083","SSP","SS",3,1.387,0.115],["Pisanu Flaviano","IT469877","SSP","MA",13,1.395,0.074],["Zupi Franco","IT1016973","SSP","MA",6,1.4,0.086],["Abrugia Stefano","IT0325","SSP","MA",5,1.411,0.061],["Giagnorio Andrea","IT1035657","SSP","EX",6,1.419,0.131],["FIORENZA Salvatore","IT1020593","SSP","EX",2,1.423,0.022],["Verde Mirko","IT1035432","SSP","EX",8,1.429,0.133],["CERVINI Patrick","IT1023427","SSP","EX",4,1.433,0.143],["Mancini Giuseppe","IT1006185","SSP","MA",5,1.448,0.072],["Vanella Walter","IT1029846","SSP","EX",7,1.462,0.19],["Mauriello Antonio","IT394399","SSP","MA",6,1.466,0.115],["Roberto Pierangelo","IT1011064","SSP","EX",3,1.474,0.265],["Ninni Giovanni","IT608276","SSP","EX",2,1.484,0.008],["Manzari Gennaro","IT1027470","SSP","MA",9,1.488,0.107],["Fazzolari Giovanbattista","IT1015800","SSP","EX",14,1.489,0.098],["Onorato Francesco","IT751074","SSP","EX",3,1.507,0.083],["Caon Daniele","IT1004137","SSP","EX",3,1.517,0.197],["Napolitano Niko","IT1020076","SSP","EX",2,1.52,0.099],["Iseppato Mirko","IT1013763","SSP","EX",3,1.521,0.072],["Ermini Alessio","IT1025069","SSP","EX",14,1.546,0.082],["Pecillo Aurelio","IT1027331","SSP","EX",4,1.55,0.1],["Laneve Cosimo","IT788590","SSP","SS",2,1.563,0.016],["Nevadini Andrea","IT1015688","SSP","EX",6,1.575,0.11],["Rizzo Mauro","IT1013272","SSP","EX",3,1.576,0.084],["Mancini Leonardo","IT1019070","SSP","SS",9,1.578,0.09],["De Felicis Enrico","IT375174","SSP","MA",3,1.586,0.021],["Minotti Lorenzo","IT1030144","SSP","SS",9,1.593,0.116],["Passiante Alfonso","IT1023000","SSP","SS",2,1.6,0.022],["Taddei Edoardo","IT1038017","SSP","SS",3,1.601,0.033],["Lamboglia Antonella","IT1019289","SSP","EX",20,1.604,0.111],["Vaccarezza Jacopo","IT763493","SSP","EX",2,1.614,0.039],["Elia Michele","IT1018198","SSP","MM",7,1.626,0.085],["Mereu Simon Luca","IT1017063","SSP","EX",2,1.631,0.035],["Salvatore Alex","IT1028314","SSP","EX",5,1.631,0.066],["Mazzoccoli Marco","IT1002705","SSP","SS",3,1.633,0.019],["Buzzelli Antonio","IT1032177","SSP","SS",7,1.639,0.287],["Torino Carmine","IT922372","SSP","EX",2,1.645,0.051],["Cappella Nicola","IT1033470","SSP","EX",4,1.685,0.166],["Cantiani Alessio","IT1035319","SSP","SS",5,1.688,0.09],["Pulciani Paolo","IT1019053","SSP","SS",8,1.692,0.098],["Ludovisi Andrea","IT1036215","SSP","MM",3,1.701,0.14],["Carrus Alessandro","IT901994","SSP","EX",2,1.71,0.005],["Giori Fabio","IT1036819","SSP","EX",5,1.711,0.103],["Di Michele Nino","IT1030350","SSP","MM",5,1.711,0.101],["Marcelli Daniele","IT1035335","SSP","SS",6,1.719,0.075],["Tedesco Giuseppe","IT1000844","SSP","SS",3,1.727,0.075],["Colazzo Giovanni","IT1009444","SSP","SS",8,1.731,0.117],["Bernardo Ciddio Paolo","IT1025555","SSP","MM",3,1.734,0.061],["Semprini Stefano","IT1008529","SSP","SS",7,1.746,0.144],["Palazzini Edoardo","IT1030879","SSP","NV",4,1.752,0.01],["Shkurashivska Dorota","IT1016796","SSP","SS",13,1.759,0.083],["DEL BUFFA Tiziano","IT1015320","SSP","SS",5,1.759,0.097],["Scaletta Mattia","IT1029955","SSP","MM",3,1.783,0.011],["Canelli Diego","IT1019442","SSP","NV",2,1.788,0.102],["Sollazzo Mattia","IT1027324","SSP","MM",5,1.79,0.055],["Di Porto Gavriel","IT976620","SSP","MM",4,1.791,0.25],["Fera Giuseppe Gioacchino","IT1022700","SSP","SS",2,1.804,0.274],["Migozzi Damiano","IT1038175","SSP","SS",4,1.809,0.066],["Carfagna Franco","IT1022711","SSP","SS",12,1.822,0.12],["Infante Gabriele","IT1032333","SSP","NV",2,1.836,0.114],["Papa Pierino","IT1016612","SSP","NV",2,1.837,0.027],["Livdi Luis Carlos","IT1006388","SSP","SS",13,1.839,0.16],["Uda Giovanni Maria","IT1027970","SSP","MM",3,1.84,0.044],["Iacono Luca","IT1024043","SSP","MM",5,1.841,0.036],["Marcantonio Sandro","IT264558","SSP","EX",4,1.858,0.035],["D'Angelo Marco","IT1019180","SSP","MM",6,1.877,0.142],["Giandomenico Maurizio","IT1024633","SSP","MM",3,1.89,0.069],["Morico Juri","IT1020194","SSP","MM",2,1.903,0.062],["Igliozzi Stefano","NTC","SSP","NV",2,1.914,0.179],["Di lenola Gianmarco","IT1031197","SSP","MM",7,1.915,0.119],["magazzini Daniele","IT1020436","SSP","SS",3,1.932,0.151],["Campoli Marco","IT1035307","SSP","NV",2,1.937,0.057],["Billeri Alessio","IT1020428","SSP","SS",4,1.954,0.043],["Cristino Andrea","IT1023398","SSP","MM",12,1.968,0.084],["Pellei Marco","IT1017636","SSP","MM",12,1.983,0.161],["Massimiano Luca","IT1016966","SSP","MM",2,1.985,0.029],["De Santis Salvatore","IT976903","SSP","MM",7,1.987,0.113],["Cuccagna Francesco","IT1032496","SSP","MM",10,1.988,0.14],["Iannelli Federico","IT1349","SSP","MA",4,1.993,0.093],["Mazzeo Pietro","IT1027285","SSP","MM",5,2.004,0.061],["Conti Roberto","IT829959","SSP","SS",3,2.021,0.096],["Loreti Alessandro","IT1014680","SSP","MM",2,2.022,0.196],["Cola Pierluigi","IT1035377","SSP","MM",4,2.023,0.143],["Graziani Ilaria","IT1023500","SSP","MM",6,2.025,0.16],["Cellini Paolo","IT1033627","SSP","NV",7,2.043,0.104],["Ardito Alessio","IT1035310","SSP","NV",2,2.071,0.004],["Zullo Emanuele","IT1002651","SSP","SS",8,2.107,0.18],["Bergamo Umberto","IT1034362","SSP","MM",5,2.11,0.082],["Romanini Roberto","IT1020349","SSP","MM",9,2.118,0.196],["Giustini Francesco","IT1038029","SSP","MM",2,2.119,0.133],["Porzi Gian Luca","IT1034557","SSP","NV",3,2.124,0.192],["Maggi Paolo","IT1027339","SSP","NV",13,2.136,0.096],["Antinucci Luciano","IT1012836","SSP","MM",5,2.16,0.181],["ANTONUCCI Simone","IT1029273","SSP","MM",4,2.162,0.08],["Ferrigni Pier Francesco","IT1032704","SSP","NV",3,2.164,0.015],["Miglietti carlo","IT1018214","SSP","NV",2,2.166,0.276],["Lucca Claudio","IT1002791","SSP","MM",5,2.168,0.179],["Vitali Federica","IT1017731","SSP","MM",3,2.187,0.113],["Antonucci Domenico","IT1039167","SSP","NV",2,2.2,0.032],["Corini Simone","IT1033510","SSP","NV",4,2.237,0.169],["Finocchiaro Daniele","IT556225","SSP","SS",9,2.243,0.507],["Salvi Paolo","IT1027839","SSP","MM",2,2.263,0.105],["Palmieri Giuseppe Francesco","IT1019160","SSP","MM",3,2.306,0.259],["Ulacco Carlo","IT1038293","SSP","NV",2,2.307,0.195],["Sangermano Rodolfo","IT1032526","SSP","MM",6,2.355,0.079],["Salvi Federico","IT1034192","SSP","NV",3,2.357,0.107],["Saliani Fabio","IT1014846","SSP","NV",6,2.359,0.231],["Tranfa Augusto","IT1036337","SSP","NV",2,2.36,0.193],["Posoiu Marius adrian","IT1038000","SSP","NV",3,2.361,0.163],["Cherchi Fabiana","IT1002652","SSP","MM",9,2.393,0.133],["Galderisi Luigi","IT1033839","SSP","NV",5,2.425,0.242],["Postiglione Roberto","XXX","SSP","NV",2,2.43,0.549],["Polletta Mirco","IT1038334","SSP","NV",2,2.432,0.293],["De stefano Antonio","IT1030117","SSP","MM",5,2.438,0.234],["Pappalardo Andrea","IT1033797","SSP","NV",5,2.45,0.274],["Piria Enzo","IT1040870","SSP","NV",2,2.455,0.095],["IPPOLITI Paolo","IT1008763","SSP","NV",2,2.476,0.148],["Papale Pierfrancesco","IT1035182","SSP","NV",2,2.5,0.019],["Morzella Daniele","IT1029408","SSP","NV",2,2.521,0.104],["Marcellini Mauro","IT1037797","SSP","NV",2,2.526,0.186],["Del Gobbo Sandro","IT1017995","SSP","NV",5,2.532,0.034],["Gismondi Carlo","IT310480","SSP","MM",2,2.543,0.077],["Valeriani Fabrizio","IT1034019","SSP","NV",9,2.554,0.263],["Sica Raffaele Giuseppe","IT1012630","SSP","NV",2,2.612,0.181],["Materazzo Stefano","IT1031033","SSP","NV",4,2.64,0.188],["Piacente Fabio","IT1014493","SSP","NV",6,2.648,0.223],["Borraccino Antonio","IT1028381","SSP","NV",13,2.667,0.271],["Donadio Raffaele","IT1034137","SSP","NV",9,2.682,0.312],["Rovere Stefano","IT1027609","SSP","NV",4,2.71,0.07],["Merola Luigi","IT1037753","SSP","NV",3,2.731,0.566],["Rotondi Stefano","IT1034178","SSP","NV",2,2.75,0.129],["Al-Dabbagh Nazar","CA766762","SSP","NV",3,2.801,0.276],["Ribellino Giuseppe","IT 473170","SSP","NV",3,2.818,0.117],["Acciarito Domenico","IT1027972","SSP","NV",3,2.829,0.528],["Irolla Salvatore","IT1013452","SSP","NV",2,2.835,0.041],["Moccia Mauro","IT1018390","SSP","NV",3,2.86,0.164],["Tanzi Agostino","IT1040356","SSP","NV",2,2.946,0.358],["Tardugno Stefano","IT1035126","SSP","NV",3,2.964,0.289],["Perrone Luca","IT1034138","SSP","NV",5,2.967,0.262],["Castaldi Giampiero","IT1025904","SSP","NV",2,2.995,0.181],["Solinas Fabio","IT1031032","SSP","NV",5,3.013,0.224],["Pirre' Marco","IT1033233","SSP","MM",4,3.027,0.102],["Macario Giovanni","IT1035176","SSP","NV",8,3.028,0.251],["Salerno Marco","IT1003508","SSP","NV",4,3.501,0.217],["Falchi Francesco","IT1038428","SSP","NV",2,3.999,0.514],["Rago Simona","IT1023619","SSP","NV",3,4.324,0.218]];
+const TT_DEFAULT_NOME = 'tt_compensato_2026-11-10.csv';
+let TT = null, ttNome = '', gara = null, garaNome = '', ultimo = null;
+
+function norm(s){
+  return (s||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').toLowerCase()
+    .replace(/[^a-z ]/g,' ').split(/\s+/).filter(Boolean).sort().join(' ');
+}
+function normId(s){ const m=(s||'').toUpperCase().replace(/\s/g,'').match(/^IT\d+/); return m&&!/^IT0*1?$/.test(m[0])?m[0]:null; }
+function fmt(x,d=3){ return (x==null||isNaN(x))?'—':x.toFixed(d).replace('.',','); }
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function parseCSV(text){
+  text=text.replace(/^﻿/,'');
+  const first=text.split(/\r?\n/)[0];
+  const sep=(first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length?';':',';
+  const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(c==='"'){ if(q&&text[i+1]==='"'){f+='"';i++;} else q=!q; }
+    else if(c===sep&&!q){row.push(f);f='';}
+    else if((c==='\n'||c==='\r')&&!q){ if(c==='\r'&&text[i+1]==='\n')i++; row.push(f);f=''; if(row.some(x=>x!==''))rows.push(row); row=[]; }
+    else f+=c;
+  }
+  row.push(f); if(row.some(x=>x!==''))rows.push(row);
+  const h=(rows[0]||[]).map(x=>x.trim());
+  return rows.slice(1).map(r=>{const o={};h.forEach((k,i)=>o[k]=(r[i]||'').trim());return o;});
+}
+const num=s=>parseFloat(String(s).replace(',','.'));
+
+function caricaTT(rows,nome){
+  TT={byName:{},byId:{}}; let n=0;
+  rows.forEach(r=>{
+    const [tir,id,div,cls,ng,tt,sd]=r;
+    if(!tir||!div||!(tt>0))return;
+    const e={tir,id,div,cls,ng,tt,sd};
+    TT.byName[norm(tir)+'|'+div]=e;
+    const i=normId(id); if(i) TT.byId[i+'|'+div]=e;
+    n++;
+  });
+  ttNome=nome;
+  document.getElementById('nTT').textContent=`${nome} · ${n} tiratori/divisione`;
+}
+caricaTT(TT_DEFAULT,TT_DEFAULT_NOME);
+
+document.getElementById('fTT').addEventListener('change',function(){
+  const f=this.files[0]; if(!f)return;
+  const rd=new FileReader(); rd.onload=e=>{
+    const rows=parseCSV(e.target.result).map(r=>[r['tiratore'],r['idpa_id'],(r['divisione']||'').toUpperCase(),r['classe_ultima'],parseInt(r['n_gare']),num(r['tt_compensato']),num(r['dev_std'])]);
+    if(!rows.length||!(rows[0][5]>0)){ msg('err','File TT non valido: servono le colonne tiratore, idpa_id, divisione, classe_ultima, n_gare, tt_compensato, dev_std.'); return; }
+    caricaTT(rows,f.name); msg('',''); if(ultimo) calcola();
+  }; rd.readAsText(f,'UTF-8'); this.value='';
+});
+document.getElementById('fGara').addEventListener('change',function(){
+  const f=this.files[0]; if(!f)return;
+  const rd=new FileReader(); rd.onload=e=>{
+    const rows=parseCSV(e.target.result);
+    if(!rows.length||!('Total Score' in rows[0])||!('Division' in rows[0])){ msg('err','Il file non sembra un export risultati PractiScore (mancano Total Score / Division).'); gara=null; aggiorna(); return; }
+    gara=rows; garaNome=f.name;
+    document.getElementById('nGara').textContent=`${f.name} · ${rows.length} righe`;
+    document.getElementById('cGara').className='card ok';
+    msg('',''); document.getElementById('out').style.display='none'; aggiorna();
+  }; rd.readAsText(f,'UTF-8'); this.value='';
+});
+document.getElementById('colpi').addEventListener('input',aggiorna);
+function aggiorna(){
+  const c=parseInt(document.getElementById('colpi').value);
+  const ok=gara&&c>0;
+  document.getElementById('calc').disabled=!ok;
+  document.getElementById('colpi').className=c>0?'':'req';
+  document.getElementById('why').textContent=ok?'':(!gara?'Carica il CSV della gara.':'Inserisci i colpi minimi (obbligatorio).');
+}
+function msg(cls,t){ document.getElementById('msgs').innerHTML=t?`<div class="msg ${cls}">${t}</div>`:''; }
+
+function calcola(){
+  const colpi=parseInt(document.getElementById('colpi').value);
+  if(!gara||!(colpi>0))return;
+  const con=[],senza=[],esclusi=[];
+  gara.forEach(r=>{
+    const nome=`${r['Last Name']||''} ${r['First Name']||''}`.trim();
+    const div=(r['Division']||'').toUpperCase().trim();
+    const sc=num(r['Total Score']);
+    if(r['Completed']!=='1'||r['DNF']==='1'||!(sc>0)){ esclusi.push(nome); return; }
+    const ttg=sc/colpi;
+    const i=normId(r['IDPA ID']);
+    const h=(i&&TT.byId[i+'|'+div])||TT.byName[norm(nome)+'|'+div];
+    const base={nome,div,cls:(r['Class']||'').toUpperCase(),score:sc,ttg};
+    if(h) con.push({...base,h,rap:ttg/h.tt});
+    else senza.push(base);
+  });
+  if(!con.length){ msg('warn','Nessun tiratore della gara ha un TT handicap nella sua divisione.'); document.getElementById('out').style.display='none'; return; }
+  const rs=con.map(x=>x.rap).sort((a,b)=>a-b);
+  const mid=rs.length>>1, idx=rs.length%2?rs[mid]:(rs[mid-1]+rs[mid])/2;
+  con.forEach(x=>x.netto=x.rap/idx);
+  con.sort((a,b)=>a.rap-b.rap);
+  ultimo={con,senza,esclusi,idx,colpi};
+  render();
+}
+function render(){
+  const {con,senza,esclusi,idx,colpi}=ultimo;
+  const migl=con.filter(x=>x.rap<1).length;
+  document.getElementById('stats').innerHTML=
+    `<div class="stat"><span>Colpi minimi</span><b>${colpi}</b></div>`+
+    `<div class="stat"><span>Con handicap</span><b>${con.length}</b></div>`+
+    `<div class="stat"><span>Meglio del proprio TT</span><b>${migl} / ${con.length}</b></div>`+
+    `<div class="stat"><span>Indice gara (mediana rapporti)</span><b>${fmt(idx,2)}</b></div>`;
+  let h=`<thead><tr><th>Pos</th><th>Tiratore</th><th>Div/Cls</th><th class="num">Punteggio</th><th class="num">TT handicap</th><th class="num">Gare</th><th class="num">TT gara</th><th class="num">Rapporto</th><th class="num">Variazione</th><th class="num">Al netto della gara</th></tr></thead><tbody>`;
+  con.forEach((x,i)=>{
+    const p=i+1, rc=p===1?'r1':p===2?'r2':p===3?'r3':'';
+    const v=(x.rap-1)*100, cl=x.rap<1?'better':'worse';
+    h+=`<tr><td class="rk ${rc}">${p}</td><td>${esc(x.nome)}</td><td class="dim">${x.div}/${x.cls}</td>
+      <td class="num">${fmt(x.score,2)}</td><td class="num">${fmt(x.h.tt)} <span class="dim">±${fmt(x.h.sd,2)}</span></td>
+      <td class="num dim">${x.h.ng}</td><td class="num">${fmt(x.ttg)}</td>
+      <td class="num ${cl}">${fmt(x.rap)}</td><td class="num ${cl}">${v>0?'+':''}${fmt(v,1)}%</td>
+      <td class="num">${fmt(x.netto)}</td></tr>`;
+  });
+  document.getElementById('tab').innerHTML=h+'</tbody>';
+  let s='';
+  if(senza.length){
+    s+=`<div class="sect">Senza TT handicap in questa divisione (${senza.length})</div><div class="wrap"><table><thead><tr><th>Tiratore</th><th>Div/Cls</th><th class="num">Punteggio</th><th class="num">TT gara</th></tr></thead><tbody>`;
+    senza.sort((a,b)=>a.ttg-b.ttg).forEach(x=>s+=`<tr><td>${esc(x.nome)}</td><td class="dim">${x.div}/${x.cls}</td><td class="num">${fmt(x.score,2)}</td><td class="num">${fmt(x.ttg)}</td></tr>`);
+    s+='</tbody></table></div>';
+  }
+  if(esclusi.length) s+=`<p class="foot">Esclusi (DNF, non completato o senza punteggio): ${esclusi.map(esc).join(', ')}</p>`;
+  document.getElementById('senza').innerHTML=s;
+  document.getElementById('out').style.display='';
+}
+function esporta(){
+  if(!ultimo)return;
+  const n=x=>String(x).replace('.',',');
+  let csv='﻿pos;tiratore;divisione;classe;punteggio;tt_handicap;dev_std;gare_handicap;tt_gara;rapporto;variazione_pct;al_netto_gara\n';
+  ultimo.con.forEach((x,i)=>csv+=[i+1,`"${x.nome}"`,x.div,x.cls,n(x.score.toFixed(2)),n(x.h.tt.toFixed(3)),n(x.h.sd.toFixed(3)),x.h.ng,n(x.ttg.toFixed(3)),n(x.rap.toFixed(3)),n(((x.rap-1)*100).toFixed(1)),n(x.netto.toFixed(3))].join(';')+'\n');
+  ultimo.senza.forEach(x=>csv+=['',`"${x.nome}"`,x.div,x.cls,n(x.score.toFixed(2)),'','','',n(x.ttg.toFixed(3)),'','',''].join(';')+'\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='classifica_tt_'+(garaNome.replace(/\.csv$/i,'')||'gara')+'.csv'; a.click();
+}
+</script>
+</body>
+</html>
