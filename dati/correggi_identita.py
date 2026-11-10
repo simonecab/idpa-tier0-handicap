@@ -7,6 +7,7 @@ Regole:
 - Chiave nome: parole normalizzate (senza accenti/maiuscole/punteggiatura) ordinate: gestisce nome/cognome invertiti.
 - Due chiavi nome diverse sono la stessa persona se condividono l'ID che per entrambe e' il piu' frequente
   (cosi' un ID usato una volta per errore non fonde due persone diverse). Piu' fusioni manuali (MANUALI).
+- Ogni persona ha un solo ID: tutte le varianti (refusi, troncamenti, segnaposto) diventano l'ID piu' frequente.
 - Forma canonica: nome = coppia (Last, First) piu' frequente della chiave piu' frequente; ID = ID valido piu' frequente
   (a parita', il piu' recente).
 - Si riscrive una riga solo se il nome normalizzato o l'ID (in maiuscolo) differisce dalla forma canonica,
@@ -102,7 +103,7 @@ for fn,(bom,nl,endnl,rows) in files.items():
         newL,newF,newI=r[iL],r[iF],r[iI]
         if (norm(r[iL]),norm(r[iF]))!=(norm(L),norm(F)): newL,newF=L,F
         cur=clean_id(r[iI])
-        if cid and cur!=cid and (cur is None or lev(cur,cid)<=2 or cid.startswith(cur) or cur in OWNER and OWNER[cur]!=g):
+        if cid and cur!=cid:   # un solo ID per persona: il piu' frequente (la tessera IDPA e' personale e non cambia)
             newI=cid
         elif cid and cur==cid and re.sub(r'\s','',r[iI]).upper()!=cid: newI=cid   # testo spurio dopo l'ID
         if (newL,newF,newI)!=(r[iL],r[iF],r[iI]):
