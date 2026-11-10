@@ -72,8 +72,9 @@ TT gara = punteggio finale (PD e penalità incluse) / colpi minimi. Rapporto = T
 </div>
 
 <div class="panel">
-  <label for="colpi">Colpi minimi della gara <b style="color:var(--accent)">*</b></label>
+  <label for="colpi">Colpi minimi della gara</label>
   <input type="number" id="colpi" class="req" min="1" step="1" placeholder="es. 120">
+  <span class="dim" id="stimaInfo"></span>
   <button class="btn" id="calc" disabled onclick="calcola()">Calcola</button>
   <span class="dim" id="why">Carica il CSV e inserisci i colpi minimi.</span>
 </div>
@@ -88,7 +89,8 @@ TT gara = punteggio finale (PD e penalità incluse) / colpi minimi. Rapporto = T
   <div class="wrap"><table id="tab"></table></div>
   <div id="senza"></div>
   <p class="foot">
-  <b>Rapporto</b> = TT gara / TT handicap. 0,90 = il 10% più veloce del proprio handicap. L'ordine per rapporto non dipende dalla difficoltà della gara.<br>
+  <b>Rapporto</b> = TT gara / TT handicap. 0,90 = il 10% più veloce del proprio handicap. L'ordine per rapporto non dipende né dalla difficoltà della gara né dal numero di colpi.<br>
+  <b>Colpi stimati</b>: se non inserisci il numero, l'app lo stima in modo che il tiratore mediano faccia esattamente il suo TT. La classifica resta identica; TT gara e variazioni diventano relativi agli altri tiratori della giornata e l'indice gara perde significato.<br>
   <b>Indice gara</b> = mediana dei rapporti: stima quanto questa gara è stata più lenta (>1) o più veloce (&lt;1) di una gara media.<br>
   <b>Al netto della gara</b> = rapporto / indice gara: miglioramento rispetto agli altri tiratori oggi.<br>
   TT handicap: media dei TT delle gare 2025-2026, compensati per la difficoltà di ogni gara; solo tiratori con almeno 2 gare nella divisione. Il tiratore è riconosciuto per nome e cognome (anche invertiti) e divisione. Uso esclusivo per gare tier 0.
@@ -100,7 +102,7 @@ TT gara = punteggio finale (PD e penalità incluse) / colpi minimi. Rapporto = T
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/__SHEET_ID__/export?format=csv';
 const TT_DEFAULT = __TT_JSON__;   // copia interna, usata solo se Drive non risponde
 const TT_DEFAULT_DATA = '__TT_DATA__';
-let TT = null, ttNome = '', gara = null, garaNome = '', ultimo = null;
+let TT = null, ttNome = '', gara = null, garaNome = '', ultimo = null, colpiStimati = false;
 
 function norm(s){
   return (s||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').toLowerCase()
@@ -157,9 +159,29 @@ async function caricaDaDrive(){
     const n=caricaTT(TT_DEFAULT);
     fonte(`Copia interna · ${n} tiratori/divisione`,'var(--yellow)',`Drive non raggiungibile (${e.message}); dati del ${TT_DEFAULT_DATA}`);
   }
+  stimaColpi();
   if(ultimo) calcola();
 }
 caricaDaDrive();
+
+// Stima dei colpi: il valore per cui il tiratore mediano della gara fa esattamente il suo TT handicap.
+// La classifica per rapporto non dipende dal numero di colpi; dipendono TT gara, variazione e indice gara.
+function stimaColpi(){
+  if(!gara||!TT) return;
+  const inp=document.getElementById('colpi');
+  if(inp.value && !colpiStimati) return;          // valore inserito a mano per questa gara: non si tocca
+  const v=[];
+  gara.forEach(r=>{
+    const sc=num(r['Total Score']); if(r['Completed']!=='1'||r['DNF']==='1'||!(sc>0)) return;
+    const h=TT.byName[norm(`${r['Last Name']||''} ${r['First Name']||''}`)+'|'+(r['Division']||'').toUpperCase().trim()];
+    if(h) v.push(sc/h.tt);
+  });
+  if(v.length<3){ document.getElementById('stimaInfo').textContent='troppi pochi tiratori con handicap per stimare: inseriscilo'; return; }
+  v.sort((a,b)=>a-b); const m=v.length>>1, med=v.length%2?v[m]:(v[m-1]+v[m])/2;
+  inp.value=Math.round(med); colpiStimati=true;
+  document.getElementById('stimaInfo').textContent=`stimato (${v.length} tiratori con handicap): se conosci il valore vero, correggilo`;
+  aggiorna();
+}
 document.getElementById('fGara').addEventListener('change',function(){
   const f=this.files[0]; if(!f)return;
   const rd=new FileReader(); rd.onload=e=>{
@@ -168,16 +190,18 @@ document.getElementById('fGara').addEventListener('change',function(){
     gara=rows; garaNome=f.name;
     document.getElementById('nGara').textContent=`${f.name} · ${rows.length} righe`;
     document.getElementById('cGara').className='card ok';
-    msg('',''); document.getElementById('out').style.display='none'; aggiorna();
+    msg('',''); document.getElementById('out').style.display='none';
+    document.getElementById('colpi').value=''; colpiStimati=false; document.getElementById('stimaInfo').textContent='';
+    stimaColpi(); aggiorna();
   }; rd.readAsText(f,'UTF-8'); this.value='';
 });
-document.getElementById('colpi').addEventListener('input',aggiorna);
+document.getElementById('colpi').addEventListener('input',()=>{ colpiStimati=false; document.getElementById('stimaInfo').textContent='inserito a mano'; aggiorna(); });
 function aggiorna(){
   const c=parseInt(document.getElementById('colpi').value);
   const ok=gara&&c>0;
   document.getElementById('calc').disabled=!ok;
   document.getElementById('colpi').className=c>0?'':'req';
-  document.getElementById('why').textContent=ok?'':(!gara?'Carica il CSV della gara.':'Inserisci i colpi minimi (obbligatorio).');
+  document.getElementById('why').textContent=ok?'':(!gara?'Carica il CSV della gara.':'Inserisci i colpi minimi.');
 }
 function msg(cls,t){ document.getElementById('msgs').innerHTML=t?`<div class="msg ${cls}">${t}</div>`:''; }
 
@@ -201,17 +225,17 @@ function calcola(){
   const mid=rs.length>>1, idx=rs.length%2?rs[mid]:(rs[mid-1]+rs[mid])/2;
   con.forEach(x=>x.netto=x.rap/idx);
   con.sort((a,b)=>a.rap-b.rap);
-  ultimo={con,senza,esclusi,idx,colpi};
+  ultimo={con,senza,esclusi,idx,colpi,stimati:colpiStimati};
   render();
 }
 function render(){
-  const {con,senza,esclusi,idx,colpi}=ultimo;
+  const {con,senza,esclusi,idx,colpi,stimati}=ultimo;
   const migl=con.filter(x=>x.rap<1).length;
   document.getElementById('stats').innerHTML=
-    `<div class="stat"><span>Colpi minimi</span><b>${colpi}</b></div>`+
+    `<div class="stat"><span>Colpi minimi${stimati?' (stimati)':''}</span><b>${colpi}</b></div>`+
     `<div class="stat"><span>Con handicap</span><b>${con.length}</b></div>`+
     `<div class="stat"><span>Meglio del proprio TT</span><b>${migl} / ${con.length}</b></div>`+
-    `<div class="stat"><span>Indice gara (mediana rapporti)</span><b>${fmt(idx,2)}</b></div>`;
+    (stimati?`<div class="stat"><span>Indice gara</span><b class="dim">n.d.</b><span>serve il n. colpi vero</span></div>`:`<div class="stat"><span>Indice gara (mediana rapporti)</span><b>${fmt(idx,2)}</b></div>`);
   let h=`<thead><tr><th>Pos</th><th>Tiratore</th><th>Div/Cls</th><th class="num opt">Punteggio</th><th class="num">TT hcp</th><th class="num opt">Gare</th><th class="num">TT gara</th><th class="num">Rapp.</th><th class="num opt">Variaz.</th><th class="num opt">Netto gara</th></tr></thead><tbody>`;
   con.forEach((x,i)=>{
     const p=i+1, rc=p===1?'r1':p===2?'r2':p===3?'r3':'';
