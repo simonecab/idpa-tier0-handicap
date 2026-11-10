@@ -40,6 +40,15 @@ tr:hover td{background:var(--card)}
 .dim{color:var(--muted);font-size:.78rem}
 .sect{font-size:.75rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:1.5rem 0 .5rem}
 .foot{font-size:.72rem;color:var(--muted);margin-top:1.5rem;line-height:1.6}
+@media (max-width:700px){
+  body{padding:1rem 12px}
+  h1{font-size:1.3rem}
+  .opt{display:none}
+  td,th{padding:.4rem .35rem;font-size:.8rem}
+  .stat{min-width:0;flex:1 1 45%}
+  .panel{gap:.6rem}
+  .nm{white-space:normal;min-width:110px}
+}
 </style>
 </head>
 <body>
@@ -55,11 +64,10 @@ TT gara = punteggio finale (PD e penalità incluse) / colpi minimi. Rapporto = T
     <div class="hint">export standard IDPA</div>
     <input type="file" id="fGara" accept=".csv">
   </div>
-  <div class="card ok" id="cTT" onclick="document.getElementById('fTT').click()">
+  <div class="card ok" id="cTT" style="cursor:default">
     <div class="lbl">Tabella TT handicap</div>
-    <div class="val" id="nTT"></div>
-    <div class="hint">clic per caricarne una aggiornata (tt_compensato_AAAA-MM-GG.csv)</div>
-    <input type="file" id="fTT" accept=".csv">
+    <div class="val" id="nTT">caricamento da Google Drive…</div>
+    <div class="hint" id="hTT">Google Sheet "TT_handicap_pubblico"</div>
   </div>
 </div>
 
@@ -83,14 +91,15 @@ TT gara = punteggio finale (PD e penalità incluse) / colpi minimi. Rapporto = T
   <b>Rapporto</b> = TT gara / TT handicap. 0,90 = il 10% più veloce del proprio handicap. L'ordine per rapporto non dipende dalla difficoltà della gara.<br>
   <b>Indice gara</b> = mediana dei rapporti: stima quanto questa gara è stata più lenta (>1) o più veloce (&lt;1) di una gara media.<br>
   <b>Al netto della gara</b> = rapporto / indice gara: miglioramento rispetto agli altri tiratori oggi.<br>
-  TT handicap: media dei TT delle gare 2025-2026, compensati per la difficoltà di ogni gara; solo tiratori con almeno 2 gare nella divisione. Uso esclusivo per gare tier 0.
+  TT handicap: media dei TT delle gare 2025-2026, compensati per la difficoltà di ogni gara; solo tiratori con almeno 2 gare nella divisione. Il tiratore è riconosciuto per nome e cognome (anche invertiti) e divisione. Uso esclusivo per gare tier 0.
   </p>
 </div>
 </div>
 
 <script>
-const TT_DEFAULT = __TT_JSON__;
-const TT_DEFAULT_NOME = '__TT_NOME__';
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/__SHEET_ID__/export?format=csv';
+const TT_DEFAULT = __TT_JSON__;   // copia interna, usata solo se Drive non risponde
+const TT_DEFAULT_DATA = '__TT_DATA__';
 let TT = null, ttNome = '', gara = null, garaNome = '', ultimo = null;
 
 function norm(s){
@@ -119,29 +128,38 @@ function parseCSV(text){
 }
 const num=s=>parseFloat(String(s).replace(',','.'));
 
-function caricaTT(rows,nome){
-  TT={byName:{},byId:{}}; let n=0;
+// righe: [tiratore, divisione, classe, n_gare, tt_ms, dev_std_ms]
+function caricaTT(rows){
+  TT={byName:{}}; let n=0;
   rows.forEach(r=>{
-    const [tir,id,div,cls,ng,tt,sd]=r;
-    if(!tir||!div||!(tt>0))return;
-    const e={tir,id,div,cls,ng,tt,sd};
-    TT.byName[norm(tir)+'|'+div]=e;
-    const i=normId(id); if(i) TT.byId[i+'|'+div]=e;
+    const [tir,div,cls,ng,ttms,sdms]=r;
+    if(!tir||!div||!(ttms>0))return;
+    TT.byName[norm(tir)+'|'+div.toUpperCase()]={tir,div,cls,ng,tt:ttms/1000,sd:sdms/1000};
     n++;
   });
-  ttNome=nome;
-  document.getElementById('nTT').textContent=`${nome} · ${n} tiratori/divisione`;
+  return n;
 }
-caricaTT(TT_DEFAULT,TT_DEFAULT_NOME);
-
-document.getElementById('fTT').addEventListener('change',function(){
-  const f=this.files[0]; if(!f)return;
-  const rd=new FileReader(); rd.onload=e=>{
-    const rows=parseCSV(e.target.result).map(r=>[r['tiratore'],r['idpa_id'],(r['divisione']||'').toUpperCase(),r['classe_ultima'],parseInt(r['n_gare']),num(r['tt_compensato']),num(r['dev_std'])]);
-    if(!rows.length||!(rows[0][5]>0)){ msg('err','File TT non valido: servono le colonne tiratore, idpa_id, divisione, classe_ultima, n_gare, tt_compensato, dev_std.'); return; }
-    caricaTT(rows,f.name); msg('',''); if(ultimo) calcola();
-  }; rd.readAsText(f,'UTF-8'); this.value='';
-});
+function fonte(testo,colore,hint){
+  document.getElementById('nTT').textContent=testo;
+  document.getElementById('cTT').style.borderColor=colore;
+  if(hint) document.getElementById('hTT').textContent=hint;
+}
+async function caricaDaDrive(){
+  try{
+    const r=await fetch(SHEET_URL,{credentials:'omit',cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const rows=parseCSV(await r.text());
+    const agg=rows.length?rows[0]['aggiornato']:'';
+    const n=caricaTT(rows.map(x=>[x['tiratore'],x['divisione'],x['classe_ultima'],parseInt(x['n_gare']),parseInt(x['tt_ms']),parseInt(x['dev_std_ms'])]));
+    if(!n) throw new Error('foglio vuoto o colonne errate');
+    fonte(`Google Drive · ${n} tiratori/divisione`,'var(--green)',`aggiornato ${agg.replace(/(\d{4})(\d\d)(\d\d)/,'$3/$2/$1')}`);
+  }catch(e){
+    const n=caricaTT(TT_DEFAULT);
+    fonte(`Copia interna · ${n} tiratori/divisione`,'var(--yellow)',`Drive non raggiungibile (${e.message}); dati del ${TT_DEFAULT_DATA}`);
+  }
+  if(ultimo) calcola();
+}
+caricaDaDrive();
 document.getElementById('fGara').addEventListener('change',function(){
   const f=this.files[0]; if(!f)return;
   const rd=new FileReader(); rd.onload=e=>{
@@ -173,8 +191,7 @@ function calcola(){
     const sc=num(r['Total Score']);
     if(r['Completed']!=='1'||r['DNF']==='1'||!(sc>0)){ esclusi.push(nome); return; }
     const ttg=sc/colpi;
-    const i=normId(r['IDPA ID']);
-    const h=(i&&TT.byId[i+'|'+div])||TT.byName[norm(nome)+'|'+div];
+    const h=TT&&TT.byName[norm(nome)+'|'+div];
     const base={nome,div,cls:(r['Class']||'').toUpperCase(),score:sc,ttg};
     if(h) con.push({...base,h,rap:ttg/h.tt});
     else senza.push(base);
@@ -195,15 +212,15 @@ function render(){
     `<div class="stat"><span>Con handicap</span><b>${con.length}</b></div>`+
     `<div class="stat"><span>Meglio del proprio TT</span><b>${migl} / ${con.length}</b></div>`+
     `<div class="stat"><span>Indice gara (mediana rapporti)</span><b>${fmt(idx,2)}</b></div>`;
-  let h=`<thead><tr><th>Pos</th><th>Tiratore</th><th>Div/Cls</th><th class="num">Punteggio</th><th class="num">TT handicap</th><th class="num">Gare</th><th class="num">TT gara</th><th class="num">Rapporto</th><th class="num">Variazione</th><th class="num">Al netto della gara</th></tr></thead><tbody>`;
+  let h=`<thead><tr><th>Pos</th><th>Tiratore</th><th>Div/Cls</th><th class="num opt">Punteggio</th><th class="num">TT hcp</th><th class="num opt">Gare</th><th class="num">TT gara</th><th class="num">Rapp.</th><th class="num opt">Variaz.</th><th class="num opt">Netto gara</th></tr></thead><tbody>`;
   con.forEach((x,i)=>{
     const p=i+1, rc=p===1?'r1':p===2?'r2':p===3?'r3':'';
     const v=(x.rap-1)*100, cl=x.rap<1?'better':'worse';
-    h+=`<tr><td class="rk ${rc}">${p}</td><td>${esc(x.nome)}</td><td class="dim">${x.div}/${x.cls}</td>
-      <td class="num">${fmt(x.score,2)}</td><td class="num">${fmt(x.h.tt)} <span class="dim">±${fmt(x.h.sd,2)}</span></td>
-      <td class="num dim">${x.h.ng}</td><td class="num">${fmt(x.ttg)}</td>
-      <td class="num ${cl}">${fmt(x.rap)}</td><td class="num ${cl}">${v>0?'+':''}${fmt(v,1)}%</td>
-      <td class="num">${fmt(x.netto)}</td></tr>`;
+    h+=`<tr><td class="rk ${rc}">${p}</td><td class="nm">${esc(x.nome)}</td><td class="dim">${x.div}/${x.cls}</td>
+      <td class="num opt">${fmt(x.score,2)}</td><td class="num">${fmt(x.h.tt)}<span class="dim opt"> ±${fmt(x.h.sd,2)}</span></td>
+      <td class="num dim opt">${x.h.ng}</td><td class="num">${fmt(x.ttg)}</td>
+      <td class="num ${cl}">${fmt(x.rap)}</td><td class="num ${cl} opt">${v>0?'+':''}${fmt(v,1)}%</td>
+      <td class="num opt">${fmt(x.netto)}</td></tr>`;
   });
   document.getElementById('tab').innerHTML=h+'</tbody>';
   let s='';
