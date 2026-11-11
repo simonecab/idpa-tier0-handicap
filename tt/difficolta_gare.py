@@ -44,8 +44,8 @@ if __name__=='__main__':
     print('correlazione fra le due stime: r = %.3f'%(sum((a-mx)*(b-my) for a,b in zip(xs,ys))/math.sqrt(sum((a-mx)**2 for a in xs)*sum((b-my)**2 for b in ys))))
     if len(sys.argv)>3:
         who=sys.argv[3].lower(); mine=[r for r in rows if who in r['nome'].lower()]
-        for d in sorted(set(r['div'] for r in mine)):
-            v=[r for r in mine if r['div']==d]
+        for k,d in sorted(set((r['key'],r['div']) for r in mine)):
+            v=[r for r in mine if r['div']==d and r['key']==k]
             print(f"\n{v[0]['nome']} {d}: {len(v)} gare")
             for r in v: print(f"  {r['g'][:40]:40s} {r['cls']}  TT {r['tt']:.3f}  diff {D[r['g']]:.3f}  TT comp {r['tt']/D[r['g']]:.3f}")
             a=[r['tt'] for r in v]; b=[r['tt']/D[r['g']] for r in v]
